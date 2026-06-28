@@ -1,0 +1,14 @@
+---
+description: Next.js frontend conventions
+globs: "**/*.{ts,tsx}"
+---
+
+# Frontend rules
+
+- Next.js 15 App Router, React 18, TypeScript strict.
+- No Next.js `/api` routes. Use the Spring backend exclusively.
+- No Supabase imports (legacy). Replace with backend session cookies.
+- Reusable components ported from `../kol-mail-desk/components` MUST be stripped of any data-fetching logic before landing here.
+- All server data via `lib/api-client/*` (typed against `api-contract-v1.yaml`).
+- UI strings in Simplified Chinese; identifiers in English.
+- Tailwind for styling.
