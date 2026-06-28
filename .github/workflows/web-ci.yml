@@ -14,85 +14,67 @@ concurrency:
   group: web-ci-${{ github.ref }}
   cancel-in-progress: true
 
-jobs:
-  # Phase 0：package.json 尚未引入（P1-T12 才落地）。
-  skeleton-guard:
-    name: P0 skeleton guard
-    runs-on: ubuntu-latest
-    if: hashFiles('package.json') == ''
-    steps:
-      - uses: actions/checkout@v4
-      - name: Notice
-        run: |
-          echo "::notice title=Phase 0::package.json 尚未引入；待 P1-T12 落地后启用 pnpm test + build + Playwright。"
+# hashFiles() 在 job-level if 不可用，只能在 step-level if 用 → 全部 step 用 if 守护。
+# Phase 0：package.json 尚未引入（P1-T12 才落地），skeleton-guard step 会绿条通过。
+# package.json 一旦存在，pnpm test + build 自动接管；playwright.config.* 出现后自动启用 smoke。
 
-  test-build:
-    name: pnpm test + build
+jobs:
+  ci:
+    name: web-ci
     runs-on: ubuntu-latest
-    if: hashFiles('package.json') != ''
     timeout-minutes: 20
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: P0 skeleton guard (no package.json yet)
+        if: hashFiles('package.json') == ''
+        run: |
+          echo "::notice title=Phase 0::package.json 尚未引入；待 P1-T12 落地后自动启用 pnpm test + build + Playwright。"
+
       - name: Setup pnpm
+        if: hashFiles('package.json') != ''
         uses: pnpm/action-setup@v4
         with:
           version: 9
 
       - name: Setup Node 20
+        if: hashFiles('package.json') != ''
         uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: pnpm
 
       - name: Install deps
+        if: hashFiles('package.json') != ''
         run: pnpm install --frozen-lockfile
 
       - name: Lint
+        if: hashFiles('package.json') != ''
         run: pnpm lint
 
       - name: Type check
+        if: hashFiles('package.json') != ''
         run: pnpm typecheck
 
       - name: Unit tests
+        if: hashFiles('package.json') != ''
         run: pnpm test -- --run
 
       - name: Build (Next.js)
+        if: hashFiles('package.json') != ''
         run: pnpm build
 
-  playwright-smoke:
-    name: Playwright smoke (@smoke)
-    runs-on: ubuntu-latest
-    needs: test-build
-    if: hashFiles('playwright.config.ts') != '' || hashFiles('playwright.config.js') != ''
-    timeout-minutes: 20
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 9
-
-      - name: Setup Node 20
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: pnpm
-
-      - name: Install deps
-        run: pnpm install --frozen-lockfile
-
-      - name: Install Playwright browsers
+      - name: Install Playwright browsers (chromium)
+        if: hashFiles('playwright.config.ts') != '' || hashFiles('playwright.config.js') != '' || hashFiles('playwright.config.mjs') != ''
         run: pnpm exec playwright install --with-deps chromium
 
-      - name: Run @smoke tests
+      - name: Playwright @smoke
+        if: hashFiles('playwright.config.ts') != '' || hashFiles('playwright.config.js') != '' || hashFiles('playwright.config.mjs') != ''
         run: pnpm exec playwright test --grep @smoke
 
       - name: Upload Playwright report
-        if: failure()
+        if: failure() && (hashFiles('playwright.config.ts') != '' || hashFiles('playwright.config.js') != '' || hashFiles('playwright.config.mjs') != '')
         uses: actions/upload-artifact@v4
         with:
           name: playwright-report
