@@ -1,0 +1,33 @@
+{
+  "extends": ["next/core-web-vitals"],
+  "ignorePatterns": ["lib/api-client/types.gen.ts"],
+  "rules": {
+    "no-restricted-imports": [
+      "error",
+      {
+        "patterns": [
+          {
+            "group": ["@/lib/data", "@/lib/data/*", "**/lib/data/*"],
+            "message": "禁止 lib/data（legacy Supabase 数据层）；请使用 @/lib/api-client。"
+          },
+          {
+            "group": ["@/lib/gmail", "@/lib/gmail/*", "**/lib/gmail/*"],
+            "message": "禁止 lib/gmail（legacy 直连）；Gmail 由后端集成。"
+          },
+          {
+            "group": ["@/lib/feishu", "@/lib/feishu/*", "**/lib/feishu/*"],
+            "message": "禁止 lib/feishu（legacy 直连）；飞书由后端集成。"
+          },
+          {
+            "group": ["@/lib/supabase", "@/lib/supabase/*", "**/lib/supabase/*", "@supabase/*"],
+            "message": "禁止 Supabase 客户端；认证与会话走 Spring 后端。"
+          },
+          {
+            "group": ["@/app/api", "@/app/api/*"],
+            "message": "禁止 Next.js /app/api 路由；业务 API 由 Spring 提供。"
+          }
+        ]
+      }
+    ]
+  }
+}

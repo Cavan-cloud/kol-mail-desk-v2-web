@@ -1,0 +1,58 @@
+{
+  "name": "kol-mail-desk-v2-web",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@9.15.9",
+  "engines": {
+    "node": "20.x"
+  },
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest",
+    "test:run": "vitest run",
+    "test:e2e": "playwright test",
+    "test:e2e:smoke": "playwright test --grep @smoke",
+    "gen:api": "openapi-typescript ../kol-mail-desk-v2-docs/specs/api-contract-v1.yaml -o lib/api-client/types.gen.ts"
+  },
+  "dependencies": {
+    "@tanstack/react-query": "^5.101.2",
+    "@tiptap/extension-color": "^3.27.1",
+    "@tiptap/extension-link": "^3.27.1",
+    "@tiptap/extension-text-style": "^3.27.1",
+    "@tiptap/extension-underline": "^3.27.1",
+    "@tiptap/react": "^3.27.1",
+    "@tiptap/starter-kit": "^3.27.1",
+    "clsx": "^2.1.1",
+    "date-fns": "^4.4.0",
+    "isomorphic-dompurify": "^3.18.0",
+    "lucide-react": "^0.468.0",
+    "next": "15",
+    "openapi-fetch": "0.17.0",
+    "react": "18",
+    "react-dom": "18",
+    "react-hot-toast": "^2.6.0",
+    "tailwind-merge": "^3.6.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.51.0",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@types/node": "20",
+    "@types/react": "18",
+    "@types/react-dom": "18",
+    "@vitejs/plugin-react": "^5.0.4",
+    "autoprefixer": "^10.5.2",
+    "eslint": "8",
+    "eslint-config-next": "15",
+    "jsdom": "^29.1.1",
+    "openapi-typescript": "7.13.0",
+    "postcss": "^8.5.16",
+    "tailwindcss": "3",
+    "typescript": "^6.0.3",
+    "vitest": "^3.2.6"
+  }
+}

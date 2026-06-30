@@ -22,8 +22,11 @@ dist/
 .idea/
 .vscode/
 
-# Logs
-npm-debug.log*
+# Playwright
+playwright-report/
+test-results/
+blob-report/
+playwright/.cache/
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*

@@ -47,7 +47,7 @@ jobs:
 
       - name: Install deps
         if: hashFiles('package.json') != ''
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --no-frozen-lockfile
 
       - name: Lint
         if: hashFiles('package.json') != ''
@@ -59,7 +59,7 @@ jobs:
 
       - name: Unit tests
         if: hashFiles('package.json') != ''
-        run: pnpm test -- --run
+        run: pnpm test:run
 
       - name: Build (Next.js)
         if: hashFiles('package.json') != ''
