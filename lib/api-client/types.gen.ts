@@ -401,6 +401,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/sync/feishu/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 飞书同步进度 */
+        get: operations["getFeishuSyncStatus"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/gmail/send": {
         parameters: {
             query?: never;
@@ -866,6 +883,11 @@ export interface components {
             mentorUserId?: string | null;
             /** @description 飞书运营名（保存后批量归属未分配达人） */
             feishuOperatorName?: string | null;
+        };
+        TeamProfileUpdateResponse: {
+            profile: components["schemas"]["Profile"];
+            /** @description 本次保存自动认领的无主 KOL 数量 */
+            kolsAssigned: number;
         };
         TemplateUpsertRequest: {
             name: string;
@@ -1457,13 +1479,13 @@ export interface operations {
             };
         };
         responses: {
-            /** @description 更新后的资料 */
+            /** @description 更新后的资料与自动归属数量 */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Profile"];
+                    "application/json": components["schemas"]["TeamProfileUpdateResponse"];
                 };
             };
             400: components["responses"]["BadRequest"];
@@ -1751,6 +1773,27 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
+        };
+    };
+    getFeishuSyncStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 同步进度 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FeishuSyncStatus"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
         };
     };
     sendEmail: {

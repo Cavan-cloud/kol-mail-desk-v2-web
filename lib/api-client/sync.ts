@@ -22,6 +22,10 @@ export function buildSyncApi(client: ApiClient) {
     triggerFeishu(): Promise<FeishuSyncStatus> {
       return unwrap(client.POST("/api/v1/sync/feishu", {}));
     },
+    /** GET /api/v1/sync/feishu/status — 飞书同步进度。 */
+    feishuStatus(): Promise<FeishuSyncStatus> {
+      return unwrap(client.GET("/api/v1/sync/feishu/status", {}));
+    },
   };
 }
 

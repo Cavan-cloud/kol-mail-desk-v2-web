@@ -7,6 +7,8 @@ export type TeamMembersResponse =
 export type Profile = components["schemas"]["Profile"];
 export type TeamProfileUpdateRequest =
   components["schemas"]["TeamProfileUpdateRequest"];
+export type TeamProfileUpdateResponse =
+  components["schemas"]["TeamProfileUpdateResponse"];
 
 export interface DepartTeamMemberResult {
   orphanedCount?: number;
@@ -19,7 +21,7 @@ export function buildTeamApi(client: ApiClient) {
       return unwrap(client.GET("/api/v1/team/members", {}));
     },
     /** PATCH /api/v1/team/profile — 编辑个人资料。 */
-    updateProfile(body: TeamProfileUpdateRequest): Promise<Profile> {
+    updateProfile(body: TeamProfileUpdateRequest): Promise<TeamProfileUpdateResponse> {
       return unwrap(client.PATCH("/api/v1/team/profile", { body }));
     },
     /** POST /api/v1/team/depart/{userId} — Leader 标记成员离职。 */

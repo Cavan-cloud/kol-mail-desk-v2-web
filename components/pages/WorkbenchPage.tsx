@@ -15,6 +15,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo } from "react";
 import { RequireAuth } from "@/components/shell/RequireAuth";
 import { SignOutButton } from "@/components/shell/SignOutButton";
+import { FeishuSyncButton } from "@/components/sync/FeishuSyncButton";
 import { PageSpinner } from "@/components/shell/PageSpinner";
 import { AssignPanel } from "@/components/team/AssignPanel";
 import { AutoMarkRead } from "@/components/workbench/AutoMarkRead";
@@ -426,7 +427,12 @@ function WorkbenchPageInner() {
   return (
     <WorkbenchShell
       search={<WorkbenchSearch initialQuery={searchParams.get("q") ?? ""} />}
-      headerActions={<SignOutButton />}
+      headerActions={
+        <div className="flex flex-wrap items-center gap-3">
+          <FeishuSyncButton />
+          <SignOutButton />
+        </div>
+      }
       sidebarStats={sidebarStats}
       listPane={listPane}
       detailHeader={detailHeader}
