@@ -1,12 +1,13 @@
 "use client";
 
-import { CheckCircle2, ClipboardCheck, Languages, Loader2, Maximize2, Minimize2 } from "lucide-react";
+import { CheckCircle2, ClipboardCheck, FileText, Languages, Loader2, Maximize2, Minimize2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
 import { useEffect, useMemo, useState } from "react";
 import { RichTextEditor, htmlToPlainText, isEditorEmpty } from "@/components/common/RichTextEditor";
 import { apiClient } from "@/lib/api-client";
 import { isApiClientError } from "@/lib/api-client/error";
+import { renderTemplateText, type TemplateRenderInput } from "@/lib/template-render";
 
 type Props = {
   kolId: string;
@@ -14,6 +15,10 @@ type Props = {
   kolStage?: string;
   kolPlatform?: string;
   kolAgreedPrice?: number | null;
+  kolHandle?: string | null;
+  kolHomepageUrl?: string | null;
+  senderName?: string;
+  operatorName?: string | null;
   to: string;
   subject: string;
   latestEmail: string;
@@ -36,6 +41,10 @@ export function DraftSendPanel({
   kolStage,
   kolPlatform,
   kolAgreedPrice,
+  kolHandle,
+  kolHomepageUrl,
+  senderName = "Chloe",
+  operatorName,
   to,
   subject,
   latestEmail,
@@ -59,6 +68,7 @@ export function DraftSendPanel({
   const [checking, setChecking] = useState(false);
   const [checkIssues, setCheckIssues] = useState<string[] | null>(null);
   const [scheduledAt, setScheduledAt] = useState("");
+  const [reviewed, setReviewed] = useState(true);
   const [message, setMessage] = useState<string | null>(null);
   const [expanded, setExpanded] = useState(false);
 
@@ -82,7 +92,24 @@ export function DraftSendPanel({
     };
   }, [expanded]);
 
+  const templateRenderInput: TemplateRenderInput = useMemo(
+    () => ({
+      kolName,
+      kolHandle,
+      platform: kolPlatform,
+      agreedPrice: kolAgreedPrice,
+      homepageUrl: kolHomepageUrl,
+      operatorName,
+      stage: kolStage,
+    }),
+    [kolAgreedPrice, kolHandle, kolHomepageUrl, kolName, kolPlatform, kolStage, operatorName]
+  );
+
   async function send() {
+    if (!reviewed) {
+      setMessage("发送前请勾选「已确认」。");
+      return;
+    }
     if (isEditorEmpty(englishBody)) {
       setMessage("英文发送稿不能为空。");
       return;
@@ -118,7 +145,7 @@ export function DraftSendPanel({
     try {
       const result = await apiClient.ai.draft({
         kolName,
-        senderName: "Chloe",
+        senderName,
         latestEmail,
         history,
         templateHint: selectedTemplate
@@ -163,6 +190,10 @@ export function DraftSendPanel({
   }
 
   async function scheduleSend() {
+    if (!reviewed) {
+      setMessage("定时发送前请勾选「已确认」。");
+      return;
+    }
     if (!scheduledAt) {
       setMessage("请选择定时发送时间。");
       return;
@@ -191,6 +222,18 @@ export function DraftSendPanel({
     } finally {
       setScheduling(false);
     }
+  }
+
+  function insertSelectedTemplate() {
+    if (!selectedTemplate) {
+      setMessage("请先选择邮件模板。");
+      return;
+    }
+    const renderedBody = renderTemplateText(selectedTemplate.body, templateRenderInput);
+    setEnglishBody(plainTextToHtml(renderedBody));
+    setChineseDraft(renderTemplateText(selectedTemplate.body, templateRenderInput));
+    setCheckIssues(null);
+    setMessage(`已插入模板「${selectedTemplate.name}」，请人工确认后再发送。`);
   }
 
   async function translateChineseToEnglish() {
@@ -264,18 +307,30 @@ export function DraftSendPanel({
         <div className="grid gap-3 md:grid-cols-2">
           <label className="grid gap-2">
             <span className="text-sm font-medium">邮件模板</span>
-            <select
-              value={selectedTemplateId}
-              onChange={(event) => setSelectedTemplateId(event.target.value)}
-              className="field-glass h-10 px-3 text-sm"
-            >
-              <option value="">不使用模板，直接让 AI 判断</option>
-              {templates.map((template) => (
-                <option key={template.id} value={template.id}>
-                  {template.scenario} / {template.name}
-                </option>
-              ))}
-            </select>
+            <div className="flex gap-2">
+              <select
+                value={selectedTemplateId}
+                onChange={(event) => setSelectedTemplateId(event.target.value)}
+                className="field-glass h-10 min-w-0 flex-1 px-3 text-sm"
+              >
+                <option value="">不使用模板，直接让 AI 判断</option>
+                {templates.map((template) => (
+                  <option key={template.id} value={template.id}>
+                    {template.scenario} / {template.name}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                disabled={!selectedTemplate}
+                onClick={insertSelectedTemplate}
+                className="island-button h-10 shrink-0 px-3"
+                title="将模板正文插入编辑器（变量已替换）"
+              >
+                <FileText className="size-4" />
+                插入
+              </button>
+            </div>
           </label>
           <label className="grid gap-2">
             <span className="text-sm font-medium">CC 邮箱</span>
@@ -312,6 +367,7 @@ export function DraftSendPanel({
             <input
               type="datetime-local"
               value={scheduledAt}
+              min={minScheduleLocalValue()}
               onChange={(event) => setScheduledAt(event.target.value)}
               className="field-glass h-10 px-3 text-sm"
             />
@@ -320,7 +376,12 @@ export function DraftSendPanel({
             <label className="flex w-full items-center justify-between gap-2 rounded-2xl border border-lovart/25 bg-lovart-soft px-3 py-2.5 text-xs text-[#9a5a00] shadow-inset">
               <span className="font-semibold">发送前请人工确认内容</span>
               <span className="inline-flex items-center gap-2 text-[#6f4700]">
-                <input type="checkbox" className="size-4 rounded border-lovart/40 accent-[#f0b65a]" defaultChecked />
+                <input
+                  type="checkbox"
+                  checked={reviewed}
+                  onChange={(event) => setReviewed(event.target.checked)}
+                  className="size-4 rounded border-lovart/40 accent-[#f0b65a]"
+                />
                 已确认
               </span>
             </label>
@@ -346,7 +407,7 @@ export function DraftSendPanel({
             {scheduling ? <Loader2 className="size-4 animate-spin" /> : <CheckCircle2 className="size-4" />}
             保存定时发送
           </button>
-          <button type="button" disabled={loading} onClick={send} className="primary-island-button h-10">
+          <button type="button" disabled={loading || !reviewed} onClick={send} className="primary-island-button h-10">
             {loading ? <Loader2 className="size-4 animate-spin" /> : <CheckCircle2 className="size-4" />}
             确认发送英文稿
           </button>
@@ -436,4 +497,10 @@ function parseEmailList(value: string) {
     .split(/[\s,;]+/)
     .map((item) => item.trim())
     .filter(Boolean);
+}
+
+function minScheduleLocalValue() {
+  const next = new Date(Date.now() + 5 * 60_000);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${next.getFullYear()}-${pad(next.getMonth() + 1)}-${pad(next.getDate())}T${pad(next.getHours())}:${pad(next.getMinutes())}`;
 }

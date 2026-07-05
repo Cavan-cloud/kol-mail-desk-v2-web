@@ -1,22 +1,35 @@
 "use client";
 
 import { CheckCircle2, Circle, Loader2 } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { apiClient } from "@/lib/api-client";
+import { queryKeys } from "@/lib/api-client/queries";
+import { isApiClientError } from "@/lib/api-client/error";
 
-// Two-way 已读/未读 toggle. Previously this was one-way (only 标记已读).
-// Surfacing 标记未读 explicitly lets the user re-flag a thread when the
-// auto-read-on-open caught it before they actually triaged it.
-export function MarkEmailReadButton({ emailId, isRead }: { emailId: string; isRead: boolean }) {
-  const router = useRouter();
+export function MarkEmailReadButton({
+  emailId,
+  isRead,
+  kolId,
+}: {
+  emailId: string;
+  isRead: boolean;
+  kolId?: string;
+}) {
+  const queryClient = useQueryClient();
   const [loading, setLoading] = useState(false);
 
   async function flip() {
     setLoading(true);
     try {
       await apiClient.emails.update(emailId, { isRead: !isRead });
-      router.refresh();
+      const invalidations = [queryClient.invalidateQueries({ queryKey: queryKeys.workbench.all })];
+      if (kolId) {
+        invalidations.push(queryClient.invalidateQueries({ queryKey: queryKeys.kol.detail(kolId) }));
+      }
+      await Promise.all(invalidations);
+    } catch (error) {
+      window.alert(isApiClientError(error) ? error.message : error instanceof Error ? error.message : "更新已读状态失败");
     } finally {
       setLoading(false);
     }

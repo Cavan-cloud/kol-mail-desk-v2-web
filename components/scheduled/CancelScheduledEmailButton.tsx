@@ -1,12 +1,13 @@
 "use client";
 
+import { useQueryClient } from "@tanstack/react-query";
 import { Loader2, XCircle } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { apiClient } from "@/lib/api-client";
+import { queryKeys } from "@/lib/api-client/queries";
 
 export function CancelScheduledEmailButton({ id }: { id: string }) {
-  const router = useRouter();
+  const queryClient = useQueryClient();
   const [loading, setLoading] = useState(false);
 
   async function cancel() {
@@ -14,7 +15,7 @@ export function CancelScheduledEmailButton({ id }: { id: string }) {
     setLoading(true);
     try {
       await apiClient.scheduled.cancel(id);
-      router.refresh();
+      await queryClient.invalidateQueries({ queryKey: queryKeys.scheduled.list });
     } finally {
       setLoading(false);
     }

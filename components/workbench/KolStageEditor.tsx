@@ -1,18 +1,25 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { apiClient } from "@/lib/api-client";
+import { queryKeys } from "@/lib/api-client/queries";
 import { isApiClientError } from "@/lib/api-client/error";
 import { KOL_STAGES, type KolStage } from "@/lib/domain";
 
-export function KolStageEditor({ kolId, initialStage }: { kolId: string; initialStage: KolStage }) {
-  const router = useRouter();
+export function KolStageEditor({
+  kolId,
+  initialStage,
+  stageOverride,
+}: {
+  kolId: string;
+  initialStage: KolStage;
+  stageOverride?: boolean;
+}) {
+  const queryClient = useQueryClient();
   const [stage, setStage] = useState<KolStage>(initialStage);
   const [saving, setSaving] = useState(false);
 
-  // Sync dropdown when the selected KOL changes (navigating between KOLs
-  // keeps the same component instance, so useState alone doesn't re-init).
   useEffect(() => {
     setStage(initialStage);
   }, [kolId, initialStage]);
@@ -22,7 +29,10 @@ export function KolStageEditor({ kolId, initialStage }: { kolId: string; initial
     setSaving(true);
     try {
       await apiClient.kols.update(kolId, { stage: nextStage });
-      router.refresh();
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.workbench.all }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.kol.detail(kolId) }),
+      ]);
     } catch (error) {
       window.alert(isApiClientError(error) ? error.message : error instanceof Error ? error.message : "保存阶段失败");
       setStage(initialStage);
@@ -33,7 +43,10 @@ export function KolStageEditor({ kolId, initialStage }: { kolId: string; initial
 
   return (
     <label className="grid gap-1 text-sm">
-      <span className="font-medium text-muted">人工校准阶段</span>
+      <span className="font-medium text-muted">
+        人工校准阶段
+        {stageOverride ? <span className="ml-1 text-xs text-accent">(校准)</span> : null}
+      </span>
       <select
         value={stage}
         disabled={saving}

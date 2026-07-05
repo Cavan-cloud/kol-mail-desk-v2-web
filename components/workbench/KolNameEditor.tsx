@@ -1,9 +1,10 @@
 "use client";
 
 import { Pencil, Save } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
 import { apiClient } from "@/lib/api-client";
+import { queryKeys } from "@/lib/api-client/queries";
 import { isApiClientError } from "@/lib/api-client/error";
 
 export function KolNameEditor({
@@ -15,18 +16,28 @@ export function KolNameEditor({
   initialName: string;
   email: string;
 }) {
-  const router = useRouter();
+  const queryClient = useQueryClient();
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(initialName);
+  const [savedName, setSavedName] = useState(initialName);
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    setName(initialName);
+    setSavedName(initialName);
+  }, [initialName, kolId]);
 
   async function saveName() {
     if (!name.trim()) return;
     setSaving(true);
     try {
       await apiClient.kols.update(kolId, { name: name.trim() });
+      setSavedName(name.trim());
       setEditing(false);
-      router.refresh();
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.workbench.all }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.kol.detail(kolId) }),
+      ]);
     } catch (error) {
       window.alert(isApiClientError(error) ? error.message : error instanceof Error ? error.message : "保存失败");
     } finally {
@@ -57,7 +68,7 @@ export function KolNameEditor({
         </div>
       ) : (
         <div className="mt-1 flex min-w-0 items-center gap-2">
-          <h2 className="m-0 truncate text-2xl font-semibold tracking-tight">{initialName}</h2>
+          <h2 className="m-0 truncate text-2xl font-semibold tracking-tight">{savedName}</h2>
           <button
             type="button"
             onClick={() => setEditing(true)}

@@ -45,7 +45,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
         <div className="mt-5 flex gap-2 rounded-xl border border-white/70 bg-white/55 p-3 text-sm leading-6 text-muted">
           <ShieldCheck className="mt-0.5 size-4 shrink-0 text-accent" />
           <p className="m-0">
-            登录即授权读取工作邮件与发送确认后的邮件。所有 AI 草稿均需人工确认后才会发送。
+            登录即授权读取工作邮件与发送确认后的邮件。Google 同意屏上<strong className="font-semibold text-ink">邮箱权限必须全部勾选</strong>，否则无法同步与发信。所有 AI 草稿均需人工确认后才会发送。
           </p>
         </div>
 

@@ -3,7 +3,9 @@
 import { Loader2, UserPlus } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api-client";
+import { queryKeys } from "@/lib/api-client/queries";
 import { isApiClientError } from "@/lib/api-client/error";
 import type { Kol } from "@/lib/api-client/kols";
 import type { TeamMember } from "@/lib/api-client/team";
@@ -16,6 +18,7 @@ type Props = {
 
 export function AssignPanel({ members, orphanedKols }: Props) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [assigneeUserId, setAssigneeUserId] = useState("");
   const [loading, setLoading] = useState(false);
@@ -60,6 +63,7 @@ export function AssignPanel({ members, orphanedKols }: Props) {
       setMessage({ tone: "ok", text: `已分配 ${data.assignedCount ?? kolIds.length} 位达人。` });
       setSelected(new Set());
       setAssigneeUserId("");
+      await queryClient.invalidateQueries({ queryKey: queryKeys.team.members });
       router.refresh();
     } catch (error) {
       setMessage({
@@ -79,16 +83,18 @@ export function AssignPanel({ members, orphanedKols }: Props) {
     <section className="glass-card-strong rounded-2xl p-3">
       <div className="flex items-center gap-2">
         <UserPlus className="size-4 text-accent" />
-        <h3 className="m-0 text-sm font-semibold">离职遗留达人分配</h3>
+        <h3 className="m-0 text-sm font-semibold">团队池达人分配</h3>
         <span className="ml-auto rounded-full bg-white/70 px-2 py-0.5 text-xs font-semibold text-muted shadow-inset">
           {orphanedKols.length}
         </span>
       </div>
-      <p className="m-0 mt-1 text-xs text-muted">仅 Leader 可见。将离职成员遗留（orphaned）的达人重新分配给在职成员。</p>
+      <p className="m-0 mt-1 text-xs text-muted">
+        仅 Leader 可见。将团队池中的无主达人或离职遗留达人分配给在职成员。
+      </p>
 
       {orphanedKols.length === 0 ? (
         <p className="m-0 mt-3 rounded-2xl border border-dashed border-white/80 bg-white/55 px-3 py-4 text-center text-xs text-muted shadow-inset">
-          当前没有待分配的离职遗留达人。
+          当前团队池没有待分配的达人。
         </p>
       ) : (
         <>

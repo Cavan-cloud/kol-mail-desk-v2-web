@@ -64,6 +64,7 @@ export function mapApiKol(kol: ApiKol): Kol {
     agreedDeadline: kol.agreedDeadline ?? null,
     notes: kol.notes ?? null,
     replyResolved: kol.replyResolved ?? false,
+    stageOverride: kol.stageOverride ?? false,
   };
 }
 

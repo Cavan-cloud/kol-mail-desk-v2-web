@@ -68,41 +68,32 @@ export function FeishuSyncButton() {
   const syncing = status.kind === "syncing";
 
   return (
-    <div className="flex flex-col items-start gap-1.5">
-      <div className="flex flex-wrap items-center gap-2">
-        <button
-          type="button"
-          onClick={runSync}
-          disabled={syncing}
-          className="primary-island-button h-10 disabled:opacity-60"
-          title="从飞书 Sheet 只读拉取达人数据并 upsert 到数据库。"
+    <div className="flex flex-wrap items-center gap-2">
+      <button
+        type="button"
+        onClick={runSync}
+        disabled={syncing}
+        className="primary-island-button h-10 disabled:opacity-60"
+        title="从飞书 Sheet 只读拉取达人数据并 upsert 到数据库。只读拉取，不会修改飞书数据。"
+      >
+        {syncing ? <Loader2 className="size-4 animate-spin" /> : <DatabaseZap className="size-4" />}
+        {syncing ? `同步中…${elapsed}s` : "同步飞书"}
+      </button>
+      {status.kind === "done" ? (
+        <span className="inline-flex h-9 items-center gap-2 rounded-full border border-emerald-300/60 bg-emerald-50/80 px-3 text-xs font-semibold text-emerald-700 shadow-inset">
+          <Check className="size-4" />
+          {status.message}
+        </span>
+      ) : null}
+      {status.kind === "error" ? (
+        <span
+          className="inline-flex h-9 max-w-[260px] items-center gap-2 truncate rounded-full border border-red-300/60 bg-red-50/80 px-3 text-xs font-semibold text-[#9f3429] shadow-inset"
+          title={status.message}
         >
-          {syncing ? <Loader2 className="size-4 animate-spin" /> : <DatabaseZap className="size-4" />}
-          {syncing ? `同步中…${elapsed}s` : "同步飞书"}
-        </button>
-        {status.kind === "done" ? (
-          <span className="inline-flex h-9 items-center gap-2 rounded-full border border-emerald-300/60 bg-emerald-50/80 px-3 text-xs font-semibold text-emerald-700 shadow-inset">
-            <Check className="size-4" />
-            同步完成
-          </span>
-        ) : null}
-        {status.kind === "error" ? (
-          <span
-            className="inline-flex h-9 max-w-[260px] items-center gap-2 truncate rounded-full border border-red-300/60 bg-red-50/80 px-3 text-xs font-semibold text-[#9f3429] shadow-inset"
-            title={status.message}
-          >
-            <TriangleAlert className="size-4" />
-            同步失败
-          </span>
-        ) : null}
-      </div>
-      {status.kind === "syncing" ? (
-        <p className="text-xs text-muted">正在读取飞书分页并写入后端，通常 10–30 秒完成，可以继续在其他页面操作。</p>
-      ) : status.kind === "done" ? (
-        <p className="text-xs text-muted">{status.message}</p>
-      ) : (
-        <p className="text-xs text-muted">只读拉取飞书 Sheet，不会修改飞书数据</p>
-      )}
+          <TriangleAlert className="size-4" />
+          同步失败
+        </span>
+      ) : null}
     </div>
   );
 }

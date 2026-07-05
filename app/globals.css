@@ -125,6 +125,25 @@ button {
   to { opacity: 1; transform: none; }
 }
 
+.email-html-body a,
+.email-plain-body a {
+  color: #0f766e;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.email-html-body a:hover,
+.email-plain-body a:hover {
+  color: #115e59;
+}
+
+.email-html-body img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 0.75rem;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

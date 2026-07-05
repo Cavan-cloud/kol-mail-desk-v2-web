@@ -32,6 +32,8 @@ type Props = {
   composeDock?: ReactNode;
   /** 右侧信息抽屉（AI 建议 / 事实 / 分配）。 */
   infoPane?: ReactNode;
+  /** 顶栏下方提示（Gmail 授权 / 历史同步引导等）。 */
+  alerts?: ReactNode;
 };
 
 const SIDEBAR_KEY = "lmd.sidebar.collapsed";
@@ -48,7 +50,8 @@ export function WorkbenchShell({
   detailHeader,
   detailBody,
   composeDock,
-  infoPane
+  infoPane,
+  alerts
 }: Props) {
   const [collapsed, setCollapsed] = useState(false);
   const [infoOpen, setInfoOpen] = useState(true);
@@ -156,6 +159,8 @@ export function WorkbenchShell({
         ) : null}
       </header>
 
+      {alerts ? <div className="shrink-0 space-y-2">{alerts}</div> : null}
+
       <div className="flex min-h-0 flex-1 gap-2.5 lg:gap-3">
         <AppSidebar collapsed={collapsed} activeHref="/" badges={navBadges} footer={composedFooter} />
 
@@ -166,23 +171,23 @@ export function WorkbenchShell({
           <div className="desk-scroll min-h-0 flex-1 overflow-y-auto overflow-x-hidden">{listPane}</div>
         </section>
 
-        <section aria-label="邮件详情" className="glass-card flex min-w-0 flex-1 flex-col overflow-hidden">
+        <section aria-label="邮件详情" className="glass-card flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
           {detailHeader ? (
             <div className="shrink-0 border-b border-white/60 bg-white/40 px-5 py-3 backdrop-blur">{detailHeader}</div>
           ) : null}
           <div className="desk-scroll min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-5 py-4">{detailBody}</div>
           {composeDock ? (
-            <div className="shrink-0 border-t border-white/60 bg-white/45 backdrop-blur">
+            <div className="relative shrink-0 border-t-2 border-[#b8ddd3]/90 bg-gradient-to-b from-[#dff1ec] via-[#edf8f5]/95 to-white/55 shadow-[0_-6px_20px_rgba(46,125,110,0.08)] backdrop-blur">
               <button
                 type="button"
                 onClick={toggleCompose}
                 aria-expanded={composeOpen}
-                className="focus-ring flex w-full items-center gap-2 px-5 py-2.5 text-sm font-semibold text-ink transition hover:bg-white/50"
+                className="focus-ring flex w-full items-center gap-2 border-b border-[#c5e8df]/60 bg-gradient-to-r from-[#d4eee7]/50 via-[#e7f6f2]/30 to-[#d4eee7]/50 px-5 py-3 text-sm font-semibold text-[#1a5c52] transition hover:from-[#c8e9df]/70 hover:via-[#dff1ec]/50 hover:to-[#c8e9df]/70"
               >
-                <PenLine className="size-4 text-accent" />
+                <PenLine className="size-4 text-[#2a7a6d]" />
                 撰写回复
                 <ChevronDown
-                  className={`ml-auto size-4 text-muted transition-transform duration-300 ease-fluid ${composeOpen ? "" : "-rotate-90"}`}
+                  className={`ml-auto size-4 text-[#2a7a6d]/70 transition-transform duration-300 ease-fluid ${composeOpen ? "" : "-rotate-90"}`}
                 />
               </button>
               <div

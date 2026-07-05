@@ -13,7 +13,10 @@ const STATUS_LABELS = {
   processing: "发送中",
   sent: "已发送",
   failed: "失败",
+  cancelled: "已取消",
 } as const;
+
+type ScheduledStatus = keyof typeof STATUS_LABELS;
 
 function ScheduledPageInner() {
   const scheduledQuery = useScheduledQuery();
@@ -37,10 +40,12 @@ function ScheduledPageInner() {
             </section>
 
             <section className="glass-card-strong overflow-hidden rounded-[2rem]">
-              <div className="grid grid-cols-[1fr_1fr_180px_120px_120px_120px] border-b border-white/70 bg-white/[0.58] px-5 py-3 text-xs font-semibold text-muted">
+              <div className="grid grid-cols-[1fr_1fr_180px_100px_100px_120px_120px_120px] border-b border-white/70 bg-white/[0.58] px-5 py-3 text-xs font-semibold text-muted">
                 <div>达人 / 收件人</div>
                 <div>主题</div>
                 <div>发送时间</div>
+                <div>格式</div>
+                <div>CC</div>
                 <div>尝试</div>
                 <div>状态</div>
                 <div className="text-right">操作</div>
@@ -49,7 +54,7 @@ function ScheduledPageInner() {
                 {rows.map((row) => (
                   <div
                     key={row.id}
-                    className="grid grid-cols-[1fr_1fr_180px_120px_120px_120px] items-center gap-3 px-5 py-4 text-sm"
+                    className="grid grid-cols-[1fr_1fr_180px_100px_100px_120px_120px_120px] items-center gap-3 px-5 py-4 text-sm"
                   >
                     <div className="min-w-0">
                       <div className="truncate font-semibold">{row.kolName ?? "—"}</div>
@@ -59,8 +64,18 @@ function ScheduledPageInner() {
                     <div className="font-mono text-xs text-muted">
                       {row.scheduledAt ? formatDate(row.scheduledAt) : "—"}
                     </div>
+                    <div className="text-xs text-muted">
+                      {row.englishBodyHtml?.trim() ? "富文本" : "纯文本"}
+                    </div>
+                    <div className="text-xs text-muted">
+                      {(row.ccEmails?.length ?? 0) > 0 ? `${row.ccEmails?.length} 个` : "无"}
+                    </div>
                     <div className="font-mono text-xs text-muted">{row.attemptCount ?? 0}/3</div>
-                    <StatusPill status={row.status ?? "scheduled"} error={row.lastError} />
+                    <StatusPill
+                      status={(row.status ?? "scheduled") as ScheduledStatus}
+                      attemptCount={row.attemptCount ?? 0}
+                      error={row.lastError}
+                    />
                     <div className="text-right">
                       {row.status === "scheduled" && row.id ? (
                         <CancelScheduledEmailButton id={row.id} />
@@ -104,9 +119,11 @@ function Summary({
 
 function StatusPill({
   status,
+  attemptCount,
   error,
 }: {
-  status: keyof typeof STATUS_LABELS;
+  status: ScheduledStatus;
+  attemptCount: number;
   error?: string | null;
 }) {
   const tone =
@@ -116,10 +133,20 @@ function StatusPill({
         ? "bg-[#f7eded] text-[#9f3429]"
         : status === "processing"
           ? "bg-[#fff8e7] text-[#8a5a00]"
-          : "bg-white/70 text-muted";
+          : status === "cancelled"
+            ? "bg-white/70 text-muted line-through"
+            : "bg-white/70 text-muted";
+
+  const label =
+    status === "failed"
+      ? attemptCount >= 3
+        ? "失败（已停止）"
+        : "失败（将重试）"
+      : (STATUS_LABELS[status] ?? status);
+
   return (
     <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${tone}`} title={error ?? undefined}>
-      {STATUS_LABELS[status] ?? status}
+      {label}
     </span>
   );
 }

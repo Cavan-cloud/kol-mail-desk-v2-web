@@ -4,7 +4,7 @@ import { ChevronRight } from "lucide-react";
 import DOMPurify from "isomorphic-dompurify";
 import { useMemo, useState } from "react";
 import { apiClient } from "@/lib/api-client";
-import { isApiClientError } from "@/lib/api-client/error";
+import { aiUnavailableUserMessage } from "@/lib/ai-user-message";
 
 export function EmailBodyViewer({
   bodyText,
@@ -16,7 +16,9 @@ export function EmailBodyViewer({
   bodyZh: string | null;
 }) {
   const [mode, setMode] = useState<"original" | "zh">("original");
-  const [translatedZh, setTranslatedZh] = useState<string | null>(bodyZh);
+  const [translatedZh, setTranslatedZh] = useState<TranslatedParts | null>(() =>
+    bodyZh ? splitIntoParts(bodyZh) : null
+  );
   const [translating, setTranslating] = useState(false);
 
   // Prefer the HTML body when Gmail returned one (real formatting, images,
@@ -29,14 +31,32 @@ export function EmailBodyViewer({
   async function translateToChinese() {
     const source = bodyText.trim() || stripHtmlToText(bodyHtml ?? "");
     if (!source) return;
+    const { main, quoted } = splitQuoted(source);
+    const mainSource = main.trim() || source;
     setTranslating(true);
     try {
-      const result = await apiClient.ai.translate({ text: source, targetLang: "zh" });
-      if (!result.translated) throw new Error("翻译失败");
-      setTranslatedZh(result.translated);
+      const mainResult = await apiClient.ai.translate({ text: mainSource, targetLang: "zh" });
+      if (mainResult.fallback || !mainResult.translated) {
+        window.alert(aiUnavailableUserMessage());
+        return;
+      }
+      let quotedZh = "";
+      if (quoted.trim()) {
+        const quotedResult = await apiClient.ai.translate({
+          text: stripQuoteMarkers(quoted),
+          targetLang: "zh",
+        });
+        if (!quotedResult.fallback && quotedResult.translated?.trim()) {
+          quotedZh = quotedResult.translated.trim();
+        }
+      }
+      setTranslatedZh({
+        main: mainResult.translated.trim(),
+        quoted: quotedZh,
+      });
       setMode("zh");
     } catch (error) {
-      window.alert(isApiClientError(error) ? error.message : error instanceof Error ? error.message : "翻译失败");
+      window.alert(aiUnavailableUserMessage());
     } finally {
       setTranslating(false);
     }
@@ -57,14 +77,14 @@ export function EmailBodyViewer({
         <button
           type="button"
           onClick={() => setMode("zh")}
-          disabled={!translatedZh}
+          disabled={!translatedZh?.main && !translatedZh?.quoted}
           className={`rounded-full px-3 py-1 text-xs font-semibold transition duration-200 disabled:opacity-50 ${
             mode === "zh" ? "bg-accent text-white shadow-inset" : "bg-white/70 text-muted shadow-inset hover:bg-white"
           }`}
         >
           中文
         </button>
-        {!translatedZh ? (
+        {!translatedZh?.main && !translatedZh?.quoted ? (
           <button
             type="button"
             disabled={translating}
@@ -78,24 +98,11 @@ export function EmailBodyViewer({
 
       <div className="overflow-x-hidden rounded-2xl border border-white/70 bg-white/[0.82] p-4 shadow-inset">
         {showingZh ? (
-          <EmailText text={translatedZh as string} />
+          <QuotedEmailBody main={translatedZh.main} quoted={translatedZh.quoted} />
         ) : hasHtml ? (
           <EmailHtml html={sanitizedHtml} />
         ) : parsed.main || parsed.quoted ? (
-          <>
-            {parsed.main ? <EmailText text={parsed.main} /> : null}
-            {parsed.quoted ? (
-              <details className="group mt-3 border-t border-line/70 pt-3">
-                <summary className="inline-flex cursor-pointer select-none items-center gap-1 text-xs font-medium text-muted transition hover:text-ink">
-                  <ChevronRight className="size-3.5 transition-transform duration-200 group-open:rotate-90" />
-                  显示引用的历史邮件
-                </summary>
-                <div className="mt-2 border-l-2 border-line pl-3 text-[13px] leading-6 text-muted/80">
-                  <EmailText text={stripQuoteMarkers(parsed.quoted)} />
-                </div>
-              </details>
-            ) : null}
-          </>
+          <QuotedEmailBody main={parsed.main} quoted={parsed.quoted ? stripQuoteMarkers(parsed.quoted) : ""} />
         ) : (
           <p className="m-0 text-sm text-muted">这封邮件没有可展示的正文。</p>
         )}
@@ -128,13 +135,40 @@ function EmailText({ text }: { text: string }) {
   );
 }
 
+type TranslatedParts = { main: string; quoted: string };
+
+function splitIntoParts(text: string): TranslatedParts {
+  const { main, quoted } = splitQuoted(text);
+  return { main, quoted: quoted ? stripQuoteMarkers(quoted) : "" };
+}
+
+function QuotedEmailBody({ main, quoted }: { main: string; quoted: string }) {
+  return (
+    <>
+      {main ? <EmailText text={main} /> : null}
+      {quoted ? (
+        <details className="group mt-3 border-t border-line/70 pt-3">
+          <summary className="inline-flex cursor-pointer select-none items-center gap-1 text-xs font-medium text-muted transition hover:text-ink">
+            <ChevronRight className="size-3.5 transition-transform duration-200 group-open:rotate-90" />
+            显示历史回复
+          </summary>
+          <div className="mt-2 border-l-2 border-line pl-3 text-[13px] leading-6 text-muted/80">
+            <EmailText text={quoted} />
+          </div>
+        </details>
+      ) : null}
+    </>
+  );
+}
+
 const QUOTE_HEADER = [
   /^>+/,
   /^On\s.+\swrote:\s*$/i,
   /^On\s.+\sat\s.+wrote:\s*$/i,
   /^-{2,}\s*(Original Message|Forwarded message)\s*-{2,}/i,
   /^(From|发件人)\s*[:：]\s*.+/,
-  /^在.+写道[:：]\s*$/
+  /^在.+写道[:：]\s*$/,
+  /^在.+[,，].+写道[:：]\s*$/
 ];
 
 function splitQuoted(text: string): { main: string; quoted: string } {
@@ -147,6 +181,14 @@ function splitQuoted(text: string): { main: string; quoted: string } {
     if (isHeader && (i > 0 || /^>+/.test(lines[i]))) {
       idx = i;
       break;
+    }
+  }
+  if (idx <= 0) {
+    for (let i = 1; i < lines.length; i += 1) {
+      if (/^>+\s?\S/.test(lines[i]) && lines.slice(0, i).some((line) => line.trim())) {
+        idx = i;
+        break;
+      }
     }
   }
   if (idx <= 0) return { main: text.trimEnd(), quoted: "" };

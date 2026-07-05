@@ -88,6 +88,13 @@ export const KOL_SOURCE_LABELS = {
   manual: "手动"
 } as const;
 
+export const KOL_STATUS_LABELS = {
+  active: "合作中",
+  unassigned: "无主",
+  orphaned: "待分配",
+  closed: "已成交"
+} as const;
+
 export type KolStage = (typeof KOL_STAGES)[number]["id"];
 export type StageFilter = KolStage | (typeof EXTRA_STAGE_FILTERS)[number]["id"] | "all";
 export type ViewMode = (typeof VIEW_MODES)[number]["id"];
@@ -133,6 +140,8 @@ export type Kol = {
   // 手动「无需回复」覆盖：true 时该 KOL 不再算「需我回复」，即使最新邮件是 inbound。
   // 下一封新的 inbound 邮件会自动清掉该标记（后端 Gmail 同步写入路径）。
   replyResolved: boolean;
+  /** 阶段已人工校准；飞书同步不会覆盖 stage。 */
+  stageOverride: boolean;
 };
 
 export type Email = {

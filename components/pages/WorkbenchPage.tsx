@@ -12,10 +12,14 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { RequireAuth } from "@/components/shell/RequireAuth";
 import { SignOutButton } from "@/components/shell/SignOutButton";
+import { BatchFollowupButton } from "@/components/gmail/BatchFollowupButton";
 import { FeishuSyncButton } from "@/components/sync/FeishuSyncButton";
+import { GmailSyncButton } from "@/components/sync/GmailSyncButton";
+import { GmailReauthorizeBanner } from "@/components/sync/GmailReauthorizeBanner";
+import { HistorySyncBanner } from "@/components/sync/HistorySyncBanner";
 import { PageSpinner } from "@/components/shell/PageSpinner";
 import { AssignPanel } from "@/components/team/AssignPanel";
 import { AutoMarkRead } from "@/components/workbench/AutoMarkRead";
@@ -34,16 +38,19 @@ import { WorkbenchShell, type SidebarStat } from "@/components/workbench/Workben
 import { mapApiEmail, mapApiKol, mapWorkbenchKol } from "@/lib/api-mapper";
 import {
   useKolDetailQuery,
+  useMeQuery,
   useTeamMembersQuery,
   useTemplatesQuery,
   useWorkbenchQuery,
 } from "@/lib/api-client/queries";
 import {
   KOL_SOURCE_LABELS,
+  KOL_STATUS_LABELS,
   PLATFORM_LABELS,
   VIEW_MODES,
   type StageFilter,
 } from "@/lib/domain";
+import { buildBatchFollowupCandidates } from "@/lib/batch-followup";
 import {
   normalizeStage,
   normalizeView,
@@ -77,7 +84,10 @@ function WorkbenchPageInner() {
   const query = searchParams.get("q")?.trim() || undefined;
   const kolParam = searchParams.get("kol");
 
+  const [focusedEmailId, setFocusedEmailId] = useState<string | null>(null);
+
   const workbenchQuery = useWorkbenchQuery({ view, stage, q: query });
+  const meQuery = useMeQuery();
   const templatesQuery = useTemplatesQuery();
   const teamQuery = useTeamMembersQuery();
 
@@ -115,7 +125,13 @@ function WorkbenchPageInner() {
     [kolDetailQuery.data?.emails]
   );
 
-  const latest = timeline.at(-1) ?? selectedKol?.latestEmail ?? null;
+  useEffect(() => {
+    setFocusedEmailId(null);
+  }, [selectedKolId]);
+
+  const latest = timeline[0] ?? selectedKol?.latestEmail ?? null;
+  const focusedEmail =
+    (focusedEmailId ? timeline.find((email) => email.id === focusedEmailId) : null) ?? latest;
   const sidebar = workbenchQuery.data?.sidebar;
   const stageCounts = sidebar?.stageCounts ?? {};
 
@@ -166,6 +182,11 @@ function WorkbenchPageInner() {
   const unreadInboundIds = timeline
     .filter((email) => email.direction === "inbound" && !email.isRead)
     .map((email) => email.id);
+
+  const batchFollowupCandidates = useMemo(
+    () => buildBatchFollowupCandidates(list),
+    [list]
+  );
 
   if (workbenchQuery.isLoading) {
     return <PageSpinner label="加载工作台…" />;
@@ -239,7 +260,7 @@ function WorkbenchPageInner() {
   );
 
   const detailHeader =
-    selectedKol && latest ? (
+    selectedKol && focusedEmail ? (
       <div className="flex items-start justify-between gap-4">
         <KolNameEditor
           kolId={selectedKol.id}
@@ -251,17 +272,21 @@ function WorkbenchPageInner() {
             kolId={selectedKol.id}
             initialResolved={selectedKol.replyResolved}
           />
-          <MarkEmailReadButton emailId={latest.id} isRead={latest.isRead} />
+          <MarkEmailReadButton emailId={focusedEmail.id} isRead={focusedEmail.isRead} kolId={selectedKol.id} />
         </div>
       </div>
     ) : null;
 
   const detailBody =
-    selectedKol && latest ? (
+    selectedKol && focusedEmail ? (
       <article className="mx-auto grid max-w-3xl gap-4">
-        <AutoMarkRead emailIds={unreadInboundIds} />
+        <AutoMarkRead emailIds={unreadInboundIds} kolId={selectedKol.id} />
         <section className="glass-card-strong rounded-2xl p-4">
-          <KolStageEditor kolId={selectedKol.id} initialStage={selectedKol.stage} />
+          <KolStageEditor
+            kolId={selectedKol.id}
+            initialStage={selectedKol.stage}
+            stageOverride={selectedKol.stageOverride}
+          />
         </section>
 
         <section className="glass-card-strong rounded-2xl p-4">
@@ -272,6 +297,10 @@ function WorkbenchPageInner() {
             <Fact label="平台" value={PLATFORM_LABELS[selectedKol.primaryPlatform]} />
             <Fact label="账号" value={selectedKol.platformHandle ?? selectedKol.handle} />
             <Fact label="负责人" value={selectedKol.ownerName} />
+            <Fact
+              label="合作状态"
+              value={KOL_STATUS_LABELS[selectedKol.status] ?? selectedKol.status}
+            />
             <Fact
               label="报价"
               value={selectedKol.agreedPrice ? `$${selectedKol.agreedPrice}` : "待确认"}
@@ -298,15 +327,18 @@ function WorkbenchPageInner() {
         <section className="glass-card-strong rounded-2xl p-4">
           <div className="flex items-center justify-between gap-3">
             <div className="min-w-0">
-              <p className="m-0 text-xs text-muted">最新邮件</p>
-              <h3 className="m-0 mt-1 truncate text-base font-semibold">{latest.subject}</h3>
+              <p className="m-0 text-xs text-muted">
+                {focusedEmail.id === latest?.id ? "最新邮件" : "邮件正文"}
+              </p>
+              <h3 className="m-0 mt-1 truncate text-base font-semibold">{focusedEmail.subject}</h3>
             </div>
-            <DeleteEmailButton emailId={latest.id} />
+            <DeleteEmailButton emailId={focusedEmail.id} kolId={selectedKol.id} />
           </div>
           <EmailBodyViewer
-            bodyText={latest.bodyText}
-            bodyHtml={latest.bodyHtml}
-            bodyZh={latest.bodyZh}
+            key={focusedEmail.id}
+            bodyText={focusedEmail.bodyText}
+            bodyHtml={focusedEmail.bodyHtml}
+            bodyZh={focusedEmail.bodyZh}
           />
         </section>
 
@@ -321,7 +353,9 @@ function WorkbenchPageInner() {
             <p className="text-sm text-muted">加载邮件时间线…</p>
           ) : (
             <div className="grid gap-3">
-              {timeline.map((email) => (
+              {timeline.map((email) => {
+                const isFocused = email.id === focusedEmail.id;
+                return (
                 <div key={email.id} className="grid grid-cols-[auto_1fr] gap-3">
                   <div
                     className={`mt-1 grid size-7 place-items-center rounded-full ${
@@ -336,20 +370,39 @@ function WorkbenchPageInner() {
                       <Send className="size-4" />
                     )}
                   </div>
-                  <div className="min-w-0 rounded-2xl border border-white/70 bg-white/60 p-3 shadow-inset">
+                  <div
+                    className={`min-w-0 rounded-2xl border bg-white/60 p-3 shadow-inset transition ${
+                      isFocused
+                        ? "border-accent/40 ring-2 ring-accent/20"
+                        : "border-white/70"
+                    }`}
+                  >
                     <div className="flex flex-wrap items-center justify-between gap-2">
-                      <p className="m-0 min-w-0 truncate text-sm font-medium">{email.subject}</p>
+                      <button
+                        type="button"
+                        onClick={() => setFocusedEmailId(email.id)}
+                        className="focus-ring min-w-0 flex-1 truncate text-left text-sm font-medium text-ink"
+                      >
+                        {email.subject}
+                      </button>
                       <div className="flex items-center gap-2">
                         <span className="text-xs text-muted">{formatDate(email.sentAt)}</span>
                         <ReclassifyButton emailId={email.id} aiSummary={email.aiSummary} />
-                        <MarkEmailReadButton emailId={email.id} isRead={email.isRead} />
-                        <DeleteEmailButton emailId={email.id} />
+                        <MarkEmailReadButton emailId={email.id} isRead={email.isRead} kolId={selectedKol.id} />
+                        <DeleteEmailButton emailId={email.id} kolId={selectedKol.id} />
                       </div>
                     </div>
-                    <p className="m-0 mt-2 text-sm leading-6 text-muted">{email.aiSummary}</p>
+                    <button
+                      type="button"
+                      onClick={() => setFocusedEmailId(email.id)}
+                      className="focus-ring mt-2 w-full text-left text-sm leading-6 text-muted"
+                    >
+                      {email.aiSummary ?? "点击查看邮件正文"}
+                    </button>
                   </div>
                 </div>
-              ))}
+              );
+              })}
             </div>
           )}
         </section>
@@ -364,7 +417,7 @@ function WorkbenchPageInner() {
     );
 
   const composeDock =
-    selectedKol && latest ? (
+    selectedKol && focusedEmail ? (
       <div className="mx-auto max-w-3xl">
         <DraftSendPanel
           kolId={selectedKol.id}
@@ -372,11 +425,15 @@ function WorkbenchPageInner() {
           kolStage={selectedKol.stage}
           kolPlatform={selectedKol.primaryPlatform}
           kolAgreedPrice={selectedKol.agreedPrice}
+          kolHandle={selectedKol.handle}
+          kolHomepageUrl={selectedKol.externalProfileUrl}
+          senderName={meQuery.data?.displayName ?? "Chloe"}
+          operatorName={meQuery.data?.feishuOperatorName}
           to={selectedKol.email}
-          subject={latest.subject}
-          latestEmail={latest.bodyText}
+          subject={latest?.subject ?? focusedEmail.subject}
+          latestEmail={latest?.bodyText ?? focusedEmail.bodyText}
           history={timeline
-            .slice(-5)
+            .slice(0, 5)
             .map(
               (email) =>
                 `${email.direction === "inbound" ? "KOL" : "Lovart"}: ${email.subject}\n${email.bodyText}`
@@ -426,10 +483,24 @@ function WorkbenchPageInner() {
 
   return (
     <WorkbenchShell
+      alerts={
+        meQuery.data ? (
+          <>
+            <GmailReauthorizeBanner profile={meQuery.data} />
+            <HistorySyncBanner profile={meQuery.data} />
+          </>
+        ) : null
+      }
       search={<WorkbenchSearch initialQuery={searchParams.get("q") ?? ""} />}
       headerActions={
         <div className="flex flex-wrap items-center gap-3">
+          <GmailSyncButton />
           <FeishuSyncButton />
+          <BatchFollowupButton
+            candidates={batchFollowupCandidates}
+            templates={templates}
+            senderName={meQuery.data?.displayName ?? "Chloe"}
+          />
           <SignOutButton />
         </div>
       }

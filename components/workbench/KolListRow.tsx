@@ -47,7 +47,10 @@ export function KolListRow({
 
       <div className="mt-1.5 flex flex-wrap items-center gap-1.5 pl-4">
         {stageLabel ? (
-          <span className="rounded-full bg-[#e7f3f0] px-2 py-0.5 text-[11px] font-semibold text-accent">{stageLabel}</span>
+          <span className="rounded-full bg-[#e7f3f0] px-2 py-0.5 text-[11px] font-semibold text-accent">
+            {stageLabel}
+            {kol.stageOverride ? " (校准)" : ""}
+          </span>
         ) : null}
         <span className="rounded-full bg-white/70 px-2 py-0.5 text-[11px] text-muted shadow-inset">@{kol.ownerName}</span>
         {kol.unreplied ? (

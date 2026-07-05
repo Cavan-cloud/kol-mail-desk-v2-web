@@ -3,7 +3,9 @@
 import { Check, History, Loader2, RefreshCw, TriangleAlert } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api-client";
+import { queryKeys } from "@/lib/api-client/queries";
 import { isApiClientError } from "@/lib/api-client/error";
 import type { GmailSyncStatus } from "@/lib/api-client/sync";
 
@@ -20,6 +22,7 @@ const GMAIL_AUTHORIZE_URL = apiClient.auth.GMAIL_AUTHORIZE_URL;
 
 export function GmailSyncButton() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [status, setStatus] = useState<Status>({ kind: "idle" });
   const resetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -67,6 +70,7 @@ export function GmailSyncButton() {
         added,
         message: added > 0 ? `增量同步完成，处理 ${added} 封` : "增量同步完成",
       });
+      await queryClient.invalidateQueries({ queryKey: queryKeys.me });
       router.refresh();
       resetTimer.current = setTimeout(() => setStatus({ kind: "idle" }), 6000);
     } catch (error) {
@@ -96,6 +100,7 @@ export function GmailSyncButton() {
         pageToken = token;
       }
       setStatus({ kind: "done", added, message: `历史同步完成，处理 ${added} 封` });
+      await queryClient.invalidateQueries({ queryKey: queryKeys.me });
       router.refresh();
       resetTimer.current = setTimeout(() => setStatus({ kind: "idle" }), 6000);
     } catch (error) {

@@ -1,5 +1,6 @@
 "use client";
 
+import { useQueryClient } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
@@ -7,25 +8,42 @@ import { LovartMark } from "@/components/common/LovartMark";
 import { PageSpinner } from "@/components/shell/PageSpinner";
 import { apiClient } from "@/lib/api-client";
 import { isApiClientError } from "@/lib/api-client/error";
-import { useMeQuery } from "@/lib/api-client/queries";
+import { queryKeys, useMeQuery, useTeamMembersQuery } from "@/lib/api-client/queries";
 import { USER_ROLE_LABELS, type UserRole } from "@/lib/domain";
 
 const ROLES: UserRole[] = ["leader", "full_time", "intern"];
 
 export default function OnboardingPage() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const meQuery = useMeQuery();
+  const teamQuery = useTeamMembersQuery();
   const [displayName, setDisplayName] = useState("");
   const [role, setRole] = useState<UserRole>("full_time");
+  const [mentorUserId, setMentorUserId] = useState("");
   const [feishuOperatorName, setFeishuOperatorName] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const currentUserId = meQuery.data?.id;
+  const mentorOptions = (teamQuery.data?.members ?? [])
+    .filter((member) => member.id && member.id !== currentUserId && member.status !== "departed")
+    .map((member) => ({
+      id: member.id!,
+      displayName: member.displayName ?? "未命名成员",
+    }));
 
   useEffect(() => {
     if (meQuery.data?.displayName) {
       setDisplayName(meQuery.data.displayName);
     }
   }, [meQuery.data?.displayName]);
+
+  useEffect(() => {
+    if (role !== "intern") {
+      setMentorUserId("");
+    }
+  }, [role]);
 
   useEffect(() => {
     if (meQuery.isError && isApiClientError(meQuery.error) && meQuery.error.status === 401) {
@@ -38,14 +56,20 @@ export default function OnboardingPage() {
 
   async function submit(event: FormEvent) {
     event.preventDefault();
+    if (role === "intern" && !mentorUserId) {
+      setError("实习生必须选择 mentor。");
+      return;
+    }
     setSaving(true);
     setError(null);
     try {
-      await apiClient.team.updateProfile({
+      const result = await apiClient.team.updateProfile({
         displayName: displayName.trim(),
         role,
+        mentorUserId: role === "intern" ? mentorUserId : null,
         feishuOperatorName: feishuOperatorName.trim() || null,
       });
+      queryClient.setQueryData(queryKeys.me, result.profile);
       router.replace("/");
       router.refresh();
     } catch (cause) {
@@ -55,7 +79,7 @@ export default function OnboardingPage() {
     }
   }
 
-  if (meQuery.isLoading) {
+  if (meQuery.isLoading || teamQuery.isLoading) {
     return (
       <main className="grid min-h-[100dvh] place-items-center">
         <PageSpinner label="加载资料…" />
@@ -100,6 +124,25 @@ export default function OnboardingPage() {
               ))}
             </select>
           </label>
+
+          {role === "intern" ? (
+            <label className="grid gap-1.5 text-sm">
+              <span className="font-medium">Mentor（必选）</span>
+              <select
+                required
+                value={mentorUserId}
+                onChange={(event) => setMentorUserId(event.target.value)}
+                className="field-glass h-10 px-3"
+              >
+                <option value="">请选择 mentor</option>
+                {mentorOptions.map((option) => (
+                  <option key={option.id} value={option.id}>
+                    {option.displayName}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : null}
 
           <label className="grid gap-1.5 text-sm">
             <span className="font-medium">飞书运营名（可选）</span>

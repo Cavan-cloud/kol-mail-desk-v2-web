@@ -1,13 +1,20 @@
 "use client";
 
 import { Trash2 } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { apiClient } from "@/lib/api-client";
+import { queryKeys } from "@/lib/api-client/queries";
 import { isApiClientError } from "@/lib/api-client/error";
 
-export function DeleteEmailButton({ emailId }: { emailId: string }) {
-  const router = useRouter();
+export function DeleteEmailButton({
+  emailId,
+  kolId,
+}: {
+  emailId: string;
+  kolId?: string;
+}) {
+  const queryClient = useQueryClient();
   const [loading, setLoading] = useState(false);
 
   async function deleteEmail() {
@@ -15,7 +22,11 @@ export function DeleteEmailButton({ emailId }: { emailId: string }) {
     setLoading(true);
     try {
       await apiClient.emails.remove(emailId);
-      router.refresh();
+      const invalidations = [queryClient.invalidateQueries({ queryKey: queryKeys.workbench.all })];
+      if (kolId) {
+        invalidations.push(queryClient.invalidateQueries({ queryKey: queryKeys.kol.detail(kolId) }));
+      }
+      await Promise.all(invalidations);
     } catch (error) {
       window.alert(isApiClientError(error) ? error.message : error instanceof Error ? error.message : "删除失败");
     } finally {

@@ -1,9 +1,10 @@
 "use client";
 
 import { Edit3, FileText, Loader2, MailPlus, Search, Trash2, X } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState, type FormEvent } from "react";
 import { apiClient } from "@/lib/api-client";
+import { queryKeys } from "@/lib/api-client/queries";
 import { isApiClientError } from "@/lib/api-client/error";
 import type { EmailTemplate } from "@/lib/api-client/templates";
 
@@ -16,7 +17,7 @@ function templateId(template: EmailTemplate): string {
 }
 
 export function TemplateLibrary({ templates }: { templates: EmailTemplate[] }) {
-  const router = useRouter();
+  const queryClient = useQueryClient();
   const [query, setQuery] = useState("");
   const [hiddenBuiltinIds, setHiddenBuiltinIds] = useState<string[]>([]);
   const [creating, setCreating] = useState(false);
@@ -44,14 +45,15 @@ export function TemplateLibrary({ templates }: { templates: EmailTemplate[] }) {
 
   async function createTemplate(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const form = event.currentTarget;
     setCreating(true);
     setMessage(null);
     try {
-      const formData = new FormData(event.currentTarget);
+      const formData = new FormData(form);
       await apiClient.templates.create(templatePayload(formData));
+      await queryClient.invalidateQueries({ queryKey: queryKeys.templates.list });
       setMessage("模板已创建");
-      event.currentTarget.reset();
-      router.refresh();
+      form.reset();
     } catch (error) {
       setMessage(isApiClientError(error) ? error.message : error instanceof Error ? error.message : "创建失败");
     } finally {
@@ -70,7 +72,7 @@ export function TemplateLibrary({ templates }: { templates: EmailTemplate[] }) {
       await apiClient.templates.update(id, templatePayload(formData));
       setMessage("模板已更新");
       setEditingId(null);
-      router.refresh();
+      await queryClient.invalidateQueries({ queryKey: queryKeys.templates.list });
     } catch (error) {
       setMessage(isApiClientError(error) ? error.message : error instanceof Error ? error.message : "保存失败");
     } finally {
@@ -91,7 +93,7 @@ export function TemplateLibrary({ templates }: { templates: EmailTemplate[] }) {
     try {
       await apiClient.templates.remove(id);
       setMessage("模板已删除");
-      router.refresh();
+      await queryClient.invalidateQueries({ queryKey: queryKeys.templates.list });
     } catch (error) {
       setMessage(isApiClientError(error) ? error.message : error instanceof Error ? error.message : "删除失败");
     } finally {
@@ -216,7 +218,7 @@ function TemplateFields({ template }: { template?: EmailTemplate }) {
         </label>
         <label className="grid gap-2 text-sm">
           <span className="font-medium">场景</span>
-          <input name="scenario" defaultValue={template?.scenario ?? ""} placeholder="如：冷启动外联" className="field-glass h-10 px-3" />
+          <input name="scenario" required defaultValue={template?.scenario ?? ""} placeholder="如：冷启动外联" className="field-glass h-10 px-3" />
         </label>
       </div>
       <label className="grid gap-2 text-sm">

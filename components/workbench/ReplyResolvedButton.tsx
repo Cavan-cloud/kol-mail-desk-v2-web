@@ -1,18 +1,20 @@
 "use client";
 
 import { CheckCheck, Loader2, Undo2 } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
 import { apiClient } from "@/lib/api-client";
+import { queryKeys } from "@/lib/api-client/queries";
+import { isApiClientError } from "@/lib/api-client/error";
 
-// 手动「已处理 / 无需回复」覆盖按钮。
-// 业务场景：最新一封是对方来信（系统默认计入「需我回复」），但内容其实是
-// "you're welcome" 之类无需回复的客套，用户主动标记，把该达人移出「需我回复」。
-// 下一封新的 inbound 会自动清掉该标记（后端 Gmail 同步写入路径）。
 export function ReplyResolvedButton({ kolId, initialResolved }: { kolId: string; initialResolved: boolean }) {
-  const router = useRouter();
+  const queryClient = useQueryClient();
   const [loading, setLoading] = useState(false);
   const [resolved, setResolved] = useState(initialResolved);
+
+  useEffect(() => {
+    setResolved(initialResolved);
+  }, [kolId, initialResolved]);
 
   async function toggle() {
     const next = !resolved;
@@ -20,7 +22,12 @@ export function ReplyResolvedButton({ kolId, initialResolved }: { kolId: string;
     try {
       await apiClient.kols.update(kolId, { replyResolved: next });
       setResolved(next);
-      router.refresh();
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.workbench.all }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.kol.detail(kolId) }),
+      ]);
+    } catch (error) {
+      window.alert(isApiClientError(error) ? error.message : error instanceof Error ? error.message : "操作失败");
     } finally {
       setLoading(false);
     }

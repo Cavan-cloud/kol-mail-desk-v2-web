@@ -1,18 +1,18 @@
 "use client";
 
+import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
 import { apiClient } from "@/lib/api-client";
+import { queryKeys } from "@/lib/api-client/queries";
 
-// Auto-marks the inbound emails currently shown in the detail pane as read.
-// Opening a KOL and seeing their messages should clear the unread state the
-// same way reading any inbox does — no manual "标记已读" click required.
-//
-// `emailIds` must contain ONLY inbound && unread email ids (computed on the
-// server) so we never fire redundant calls for outbound or already-read mail.
-export function AutoMarkRead({ emailIds }: { emailIds: string[] }) {
-  const router = useRouter();
-  // Guard against re-firing for the same set across re-renders / Strict Mode.
+export function AutoMarkRead({
+  emailIds,
+  kolId,
+}: {
+  emailIds: string[];
+  kolId?: string;
+}) {
+  const queryClient = useQueryClient();
   const doneKey = useRef<string | null>(null);
 
   useEffect(() => {
@@ -27,14 +27,19 @@ export function AutoMarkRead({ emailIds }: { emailIds: string[] }) {
         emailIds.map((id) => apiClient.emails.update(id, { isRead: true }))
       );
       const anyOk = results.some((r) => r.status === "fulfilled");
-      // Refresh so the unread badge/count and list dot update immediately.
-      if (!cancelled && anyOk) router.refresh();
+      if (!cancelled && anyOk) {
+        const invalidations = [queryClient.invalidateQueries({ queryKey: queryKeys.workbench.all })];
+        if (kolId) {
+          invalidations.push(queryClient.invalidateQueries({ queryKey: queryKeys.kol.detail(kolId) }));
+        }
+        await Promise.all(invalidations);
+      }
     })();
 
     return () => {
       cancelled = true;
     };
-  }, [emailIds, router]);
+  }, [emailIds, kolId, queryClient]);
 
   return null;
 }

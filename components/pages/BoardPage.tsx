@@ -1,9 +1,9 @@
 "use client";
 
-import { Inbox, Send, TrendingUp, UsersRound } from "lucide-react";
+import { AlertTriangle, Inbox, TrendingUp, UsersRound } from "lucide-react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
-import { useMemo } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useMemo, useState, type FormEvent } from "react";
 import { BoardPipelinePanel } from "@/components/board/BoardPipelinePanel";
 import { RequireAuth } from "@/components/shell/RequireAuth";
 import { PageSpinner } from "@/components/shell/PageSpinner";
@@ -41,9 +41,13 @@ function boardQueryString(window: string) {
 }
 
 function BoardPageInner() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const windowParam = searchParams.get("window") ?? "all";
   const boardQuery = useBoardQuery({ window: windowParam });
+  const [monthInput, setMonthInput] = useState(
+    /^\d{4}-\d{2}$/.test(windowParam) ? windowParam : ""
+  );
 
   const mapped = useMemo(() => {
     const data = boardQuery.data;
@@ -80,6 +84,12 @@ function BoardPageInner() {
     };
   }, [boardQuery.data]);
 
+  function applyMonthFilter(event: FormEvent) {
+    event.preventDefault();
+    if (!monthInput) return;
+    router.push(boardHref(monthInput));
+  }
+
   if (boardQuery.isLoading) {
     return (
       <AppShell activeHref="/board" title="团队看板" headerActions={<SignOutButton />}>
@@ -97,11 +107,13 @@ function BoardPageInner() {
   }
 
   const { kpi } = mapped;
+  const timeLabel = windowLabel(windowParam);
+  const conversionPct = Math.round((kpi?.conversionRate ?? 0) * 100);
 
   return (
     <AppShell activeHref="/board" title="团队看板" headerActions={<SignOutButton />}>
       <div className="mx-auto max-w-[1280px] p-4 lg:p-6">
-        <section className="mb-5 flex flex-wrap gap-2">
+        <section className="mb-5 flex flex-wrap items-center gap-2">
           {WINDOW_OPTIONS.map((item) => (
             <Link
               key={item.id}
@@ -115,16 +127,48 @@ function BoardPageInner() {
               {item.label}
             </Link>
           ))}
+          <form onSubmit={applyMonthFilter} className="ml-1 flex items-center gap-1.5">
+            <input
+              type="month"
+              value={monthInput}
+              onChange={(event) => setMonthInput(event.target.value)}
+              className="h-9 rounded-full border border-white/70 bg-white/72 px-3 text-sm font-semibold text-muted shadow-inset outline-none focus:border-lovart/40"
+              title="选择飞书建联/触达月份"
+            />
+            <button type="submit" className="island-button h-9 px-3 text-xs">
+              按月
+            </button>
+          </form>
+          <span
+            className="ml-auto text-xs text-muted"
+            title="时间窗按飞书表记录的建联/触达日期过滤；未记录日期的达人只出现在「全部时间」。"
+          >
+            当前：{timeLabel}
+          </span>
         </section>
 
         <section className="mb-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <KpiCard icon={<UsersRound className="size-5" />} label="总达人" value={kpi?.totalKols ?? 0} />
-          <KpiCard icon={<Inbox className="size-5" />} label="进行中" value={kpi?.activeKols ?? 0} />
-          <KpiCard icon={<Send className="size-5" />} label="已发布" value={kpi?.publishedKols ?? 0} />
+          <KpiCard
+            icon={<UsersRound className="size-5" />}
+            label={`总达人（${timeLabel}）`}
+            value={kpi?.totalKols ?? 0}
+          />
+          <KpiCard
+            icon={<AlertTriangle className="size-5" />}
+            label="待回复 / 停滞"
+            value={kpi?.unrepliedKols ?? 0}
+            tone="warn"
+          />
+          <KpiCard
+            icon={<Inbox className="size-5" />}
+            label="未读邮件"
+            value={kpi?.unreadEmails ?? 0}
+          />
           <KpiCard
             icon={<TrendingUp className="size-5" />}
-            label="转化率"
-            value={`${Math.round((kpi?.conversionRate ?? 0) * 100)}%`}
+            label="进入合作 / 转化率"
+            value={kpi?.cooperationKols ?? 0}
+            suffix={`${conversionPct}%`}
           />
         </section>
 
@@ -136,7 +180,7 @@ function BoardPageInner() {
           conversion={mapped.conversion}
           total={mapped.total}
           baseQuery={boardQueryString(windowParam)}
-          timeLabel={windowLabel(windowParam)}
+          timeLabel={timeLabel}
         />
       </div>
     </AppShell>
@@ -147,10 +191,14 @@ function KpiCard({
   icon,
   label,
   value,
+  suffix,
+  tone,
 }: {
   icon: React.ReactNode;
   label: string;
   value: number | string;
+  suffix?: string;
+  tone?: "warn";
 }) {
   return (
     <div className="glass-card rounded-3xl p-4">
@@ -158,7 +206,16 @@ function KpiCard({
         <span className="text-sm">{label}</span>
         {icon}
       </div>
-      <strong className="mt-2 block font-mono text-3xl tabular-nums">{value}</strong>
+      <div className="mt-2 flex items-baseline gap-2">
+        <strong
+          className={`block font-mono text-3xl tabular-nums ${
+            tone === "warn" ? "text-[#9f3429]" : ""
+          }`}
+        >
+          {value}
+        </strong>
+        {suffix ? <span className="text-sm font-semibold text-muted">{suffix}</span> : null}
+      </div>
     </div>
   );
 }

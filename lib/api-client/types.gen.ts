@@ -657,6 +657,8 @@ export interface components {
             notes?: string | null;
             /** @description 手动「无需回复」覆盖标记 */
             replyResolved?: boolean;
+            /** @description 阶段已人工校准；为 true 时飞书同步不覆盖 stage */
+            stageOverride?: boolean;
             /** Format: date-time */
             createdAt?: string;
             /** Format: date-time */
@@ -773,6 +775,12 @@ export interface components {
         TeamMember: components["schemas"]["Profile"] & {
             /** @description 名下达人数量 */
             ownedKolCount?: number;
+            /** @description 在跟达人数（status=active） */
+            activeKolCount?: number;
+            /** @description 已成交达人数（status=closed） */
+            closedKolCount?: number;
+            /** @description 停滞风险达人数（末次 inbound 3 天未回复） */
+            stalledKolCount?: number;
         };
         /** @description 团队成员 + 团队池 */
         TeamMembersResponse: {
@@ -808,19 +816,19 @@ export interface components {
             sidebar?: components["schemas"]["WorkbenchSidebarStats"];
             page?: components["schemas"]["PageMeta"];
         };
-        /** @description 看板核心指标 */
+        /** @description 看板核心指标（v3.3 §5.1） */
         BoardKpi: {
-            /** @description 达人总数 */
+            /** @description 当前时间窗内达人总数 */
             totalKols?: number;
-            /** @description 进行中达人数 */
-            activeKols?: number;
-            /** @description 已发布数 */
-            publishedKols?: number;
-            /** @description 已付款数 */
-            paidKols?: number;
+            /** @description 待回复 / 停滞达人数（最新动作为 inbound 且未标记无需回复） */
+            unrepliedKols?: number;
+            /** @description 未读 inbound 邮件数 */
+            unreadEmails?: number;
+            /** @description 进入合作达人数（确认合作及之后阶段快照合计） */
+            cooperationKols?: number;
             /**
              * Format: float
-             * @description 转化率（已付款 / 总数）
+             * @description 转化率（付款阶段累计 / 触达阶段累计）
              */
             conversionRate?: number;
         };
