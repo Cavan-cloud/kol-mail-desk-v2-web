@@ -133,7 +133,13 @@ function WorkbenchPageInner() {
   const focusedEmail =
     (focusedEmailId ? timeline.find((email) => email.id === focusedEmailId) : null) ?? latest;
   const sidebar = workbenchQuery.data?.sidebar;
-  const stageCounts = sidebar?.stageCounts ?? {};
+  const stageCounts = useMemo((): Record<string, number> => {
+    const fromApi = sidebar?.stageCounts ?? {};
+    const unreplied =
+      "unreplied" in fromApi ? (fromApi.unreplied ?? 0) : (sidebar?.unreplied ?? 0);
+    const unread = "unread" in fromApi ? (fromApi.unread ?? 0) : 0;
+    return { ...fromApi, unreplied, unread };
+  }, [sidebar?.stageCounts, sidebar?.unreplied]);
 
   const sidebarStats: SidebarStat[] = [
     {
@@ -154,7 +160,7 @@ function WorkbenchPageInner() {
     },
     {
       label: "团队池",
-      value: view === "pool" ? (sidebar?.total ?? 0) : 0,
+      value: sidebar?.teamPool ?? 0,
       href: workbenchHref({ view: "pool", stage: "all", q: query ?? null }),
       icon: <UsersRound className="size-4" />,
       active: view === "pool",
@@ -483,6 +489,7 @@ function WorkbenchPageInner() {
 
   return (
     <WorkbenchShell
+      navBadges={sidebar?.unreplied ? { "/": sidebar.unreplied } : undefined}
       alerts={
         meQuery.data ? (
           <>

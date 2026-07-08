@@ -805,7 +805,9 @@ export interface components {
             unread?: number;
             /** @description 需我回复数 */
             unreplied?: number;
-            /** @description 各阶段计数 */
+            /** @description 团队池达人数（无主 unassigned + 待分配 orphaned，与当前 view 无关） */
+            teamPool?: number;
+            /** @description 各阶段与扩展筛选计数（含 KolStage 键及 unread / unreplied） */
             stageCounts?: {
                 [key: string]: number;
             };
@@ -820,7 +822,7 @@ export interface components {
         BoardKpi: {
             /** @description 当前时间窗内达人总数 */
             totalKols?: number;
-            /** @description 待回复 / 停滞达人数（最新动作为 inbound 且未标记无需回复） */
+            /** @description 待回复达人数（最新动作为 inbound 且未标记无需回复；不含团队页「停滞风险」的 3 天阈值） */
             unrepliedKols?: number;
             /** @description 未读 inbound 邮件数 */
             unreadEmails?: number;
@@ -853,11 +855,81 @@ export interface components {
              * @example all
              */
             window?: string;
+            /**
+             * Format: uuid
+             * @description 当前成员视角（null = 团队整体）
+             */
+            selectedOwnerId?: string | null;
+            /**
+             * @description 成员视角下是否含实习生 rollup
+             * @default true
+             */
+            includeInterns: boolean;
             kpi?: components["schemas"]["BoardKpi"];
             /** @description 累计漏斗 */
             funnel?: components["schemas"]["BoardFunnelStage"][];
             /** @description 阶段分布 */
             stageDistribution?: components["schemas"]["BoardStageDistribution"][];
+            /** @description 下钻达人列表（detail 参数存在时填充，否则为空数组） */
+            kols?: components["schemas"]["BoardKol"][];
+            /** @description 成员进度行（随 scope + window 变化） */
+            members?: components["schemas"]["BoardMemberRow"][];
+            /** @description 平台分布（随 scope + window） */
+            platformDistribution?: components["schemas"]["BoardPlatformSegment"][];
+            /** @description 最近邮件动态（最多 16 条，随 scope + window） */
+            recentActivity?: components["schemas"]["BoardKol"][];
+            /** @description 飞书建联/触达月份快捷 chip 数据源（yyyy-MM，降序，前端最多展示 6 个） */
+            availableMonths?: string[];
+            /** @description 下钻达人列表分页信息（detail 存在时返回） */
+            kolsPage?: components["schemas"]["PageMeta"] | null;
+        };
+        /** @description 看板成员进度行 */
+        BoardMemberRow: {
+            /** Format: uuid */
+            memberId?: string;
+            displayName?: string;
+            /** @description leader / full_time / intern */
+            role?: string;
+            /** @description 统计口径覆盖的成员 ID（含实习生 rollup） */
+            coveredMemberIds?: string[];
+            /** @description 各阶段达人数（当前快照，不累计） */
+            stageCounts?: {
+                [key: string]: number;
+            };
+            total?: number;
+            /** @description 未读 inbound 邮件数 */
+            unread?: number;
+            /** @description 待回复达人数（非 3 天停滞口径） */
+            unreplied?: number;
+        };
+        /** @description 看板平台分布段 */
+        BoardPlatformSegment: {
+            platform?: components["schemas"]["Platform"];
+            label?: string;
+            count?: number;
+        };
+        /** @description 看板下钻列表中的最新邮件摘要 */
+        BoardKolLatestEmail: {
+            subject?: string;
+            aiSummary?: string;
+            aiPriority?: string;
+            direction?: components["schemas"]["EmailDirection"];
+            /** Format: date-time */
+            sentAt?: string;
+        };
+        /** @description 看板下钻达人行 */
+        BoardKol: {
+            /** Format: uuid */
+            id?: string;
+            name?: string;
+            email?: string;
+            stage?: components["schemas"]["KolStage"];
+            primaryPlatform?: components["schemas"]["Platform"];
+            type?: string | null;
+            unreadCount?: number;
+            /** @description 是否待回复 */
+            unreplied?: boolean;
+            latestEmail?: components["schemas"]["BoardKolLatestEmail"] | null;
         };
         /** @description KOL 编辑请求（按需传字段） */
         KolUpdateRequest: {
@@ -1433,6 +1505,18 @@ export interface operations {
             query?: {
                 /** @description 时间窗：all / week / month / last30 / 指定月份 yyyy-MM */
                 window?: string;
+                /** @description 成员视角（UUID）；省略为团队整体 */
+                owner?: string;
+                /** @description 成员视角下是否合并其名下的实习生达人（默认 true） */
+                includeInterns?: boolean;
+                /** @description 下钻模式：kols / unreplied / unread；省略则不返回 kols 列表 */
+                detail?: "kols" | "unreplied" | "unread";
+                /** @description 下钻时按合作阶段筛选（KolStage） */
+                stage?: components["schemas"]["KolStage"];
+                /** @description 下钻达人列表页码（从 1 开始，默认 1） */
+                page?: number;
+                /** @description 下钻达人列表每页条数（默认 20，最大 100） */
+                size?: number;
             };
             header?: never;
             path?: never;

@@ -31,6 +31,8 @@ type Props = {
   total: number;
   baseQuery: string;
   timeLabel: string;
+  activeDetail?: "kols" | "unreplied" | "unread" | null;
+  activeStage?: KolStage | null;
 };
 
 export function BoardPipelinePanel({
@@ -41,7 +43,9 @@ export function BoardPipelinePanel({
   conversion,
   total,
   baseQuery,
-  timeLabel
+  timeLabel,
+  activeDetail,
+  activeStage
 }: Props) {
   const [mode, setMode] = useState<Mode>("funnel");
 
@@ -93,7 +97,11 @@ export function BoardPipelinePanel({
               <Link
                 key={column.id}
                 href={`/board?${appendQuery(baseQuery, { detail: "kols", stage: column.id })}`}
-                className="group grid grid-cols-[96px_minmax(0,1fr)_auto] items-center gap-3 rounded-2xl border border-white/60 bg-white/55 px-3 py-2 shadow-inset transition duration-200 hover:bg-white"
+                className={`group grid grid-cols-[96px_minmax(0,1fr)_auto] items-center gap-3 rounded-2xl border px-3 py-2 shadow-inset transition duration-200 hover:bg-white ${
+                  activeDetail === "kols" && activeStage === column.id
+                    ? "border-lovart/35 bg-lovart-soft/40 ring-2 ring-lovart/25"
+                    : "border-white/60 bg-white/55"
+                }`}
                 title={`${column.description}\n本阶段当前快照：${snapshot} 人；本阶段及以后累计：${count} 人`}
               >
                 <span className="truncate text-sm font-semibold">{column.label}</span>
@@ -118,7 +126,13 @@ export function BoardPipelinePanel({
           })}
         </div>
       ) : (
-        <SnapshotBody snapshotByStage={snapshotByStage} total={total} baseQuery={baseQuery} />
+        <SnapshotBody
+          snapshotByStage={snapshotByStage}
+          total={total}
+          baseQuery={baseQuery}
+          activeDetail={activeDetail}
+          activeStage={activeStage}
+        />
       )}
     </section>
   );
@@ -127,11 +141,15 @@ export function BoardPipelinePanel({
 function SnapshotBody({
   snapshotByStage,
   total,
-  baseQuery
+  baseQuery,
+  activeDetail,
+  activeStage
 }: {
   snapshotByStage: Record<KolStage, number>;
   total: number;
   baseQuery: string;
+  activeDetail?: "kols" | "unreplied" | "unread" | null;
+  activeStage?: KolStage | null;
 }) {
   const maxCount = Math.max(...ORDERED_STAGES.map((s) => snapshotByStage[s.id] ?? 0), 1);
   return (
@@ -145,7 +163,11 @@ function SnapshotBody({
           <Link
             key={stage.id}
             href={`/board?${appendQuery(baseQuery, { detail: "kols", stage: stage.id })}`}
-            className="group grid grid-cols-[96px_minmax(0,1fr)_auto] items-center gap-3 rounded-2xl border border-dashed border-[#5b6b8a]/25 bg-white/35 px-3 py-1.5 transition duration-200 hover:border-solid hover:bg-white"
+            className={`group grid grid-cols-[96px_minmax(0,1fr)_auto] items-center gap-3 rounded-2xl border px-3 py-1.5 transition duration-200 hover:border-solid hover:bg-white ${
+              activeDetail === "kols" && activeStage === stage.id
+                ? "border-lovart/35 bg-lovart-soft/40 ring-2 ring-lovart/25"
+                : "border-dashed border-[#5b6b8a]/25 bg-white/35"
+            }`}
             title={`${stage.description}\n当前快照：${count} 人（占总体 ${pct}%）`}
           >
             <span className="flex items-center gap-1.5 truncate text-sm font-semibold">
@@ -225,5 +247,6 @@ function lerpHex(a: string, b: string, t: number): string {
 function appendQuery(query: string, extra: Record<string, string>) {
   const params = new URLSearchParams(query);
   for (const [key, value] of Object.entries(extra)) params.set(key, value);
+  params.delete("page");
   return params.toString();
 }

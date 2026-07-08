@@ -18,7 +18,7 @@ export const queryKeys = {
       ["workbench", "list", params] as const,
   },
   me: ["auth", "me"] as const,
-  board: (window?: string) => ["board", window ?? "all"] as const,
+  board: (params: GetBoardParams = {}) => ["board", params] as const,
   team: {
     members: ["team", "members"] as const,
   },
@@ -59,7 +59,7 @@ export function useMeQuery() {
 
 export function useBoardQuery(params: GetBoardParams = {}) {
   return useQuery<BoardSummary>({
-    queryKey: queryKeys.board(params.window),
+    queryKey: queryKeys.board(params),
     queryFn: () => apiClient.board.get(params),
   });
 }

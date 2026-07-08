@@ -2,6 +2,9 @@ import { unwrap, type ApiClient } from "./http";
 import type { components, operations } from "./types.gen";
 
 export type BoardSummary = components["schemas"]["BoardSummary"];
+export type BoardKol = components["schemas"]["BoardKol"];
+export type BoardMemberRow = components["schemas"]["BoardMemberRow"];
+export type BoardPlatformSegment = components["schemas"]["BoardPlatformSegment"];
 export type BoardKpi = components["schemas"]["BoardKpi"];
 export type BoardFunnelStage = components["schemas"]["BoardFunnelStage"];
 export type BoardStageDistribution =
