@@ -26,6 +26,8 @@ function kol(partial: Partial<KolWithLatestEmail> & Pick<KolWithLatestEmail, "id
     lastInboundAt: null,
     lastOutboundAt: null,
     agreedPrice: null,
+    brandQuote: null,
+    finalCooperationPrice: null,
     agreedDeadline: null,
     notes: null,
     replyResolved: false,

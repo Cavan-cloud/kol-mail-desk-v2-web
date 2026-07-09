@@ -135,6 +135,8 @@ export type Kol = {
   lastInboundAt: string | null;
   lastOutboundAt: string | null;
   agreedPrice: number | null;
+  brandQuote: string | null;
+  finalCooperationPrice: number | null;
   agreedDeadline: string | null;
   notes: string | null;
   // 手动「无需回复」覆盖：true 时该 KOL 不再算「需我回复」，即使最新邮件是 inbound。

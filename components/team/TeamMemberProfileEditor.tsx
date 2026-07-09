@@ -40,6 +40,10 @@ export function TeamMemberProfileEditor({
       setMessage("实习生必须选择 mentor");
       return;
     }
+    if (!feishuOperatorName.trim()) {
+      setMessage("请填写飞书运营名");
+      return;
+    }
     setLoading(true);
     setMessage(null);
     try {
@@ -47,7 +51,7 @@ export function TeamMemberProfileEditor({
         displayName: displayName.trim(),
         role,
         mentorUserId: role === "intern" ? mentorUserId || null : null,
-        feishuOperatorName: feishuOperatorName.trim() || null,
+        feishuOperatorName: feishuOperatorName.trim(),
       });
       const assigned = result.kolsAssigned ?? 0;
       setMessage(
@@ -94,9 +98,11 @@ export function TeamMemberProfileEditor({
           ))}
         </select>
         <input
+          required
           value={feishuOperatorName}
           onChange={(event) => setFeishuOperatorName(event.target.value)}
-          placeholder="飞书运营名"
+          placeholder="需与自建联表格运营名一致"
+          title="需与自建联表格运营名一致"
           className="h-9 rounded-full border border-white/70 bg-white/75 px-3 text-xs shadow-inset outline-none focus:border-accent/50"
         />
       </div>

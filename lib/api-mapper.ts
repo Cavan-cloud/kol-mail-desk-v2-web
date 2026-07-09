@@ -61,6 +61,8 @@ export function mapApiKol(kol: ApiKol): Kol {
     lastInboundAt: kol.lastInboundAt ?? null,
     lastOutboundAt: kol.lastOutboundAt ?? null,
     agreedPrice: kol.agreedPrice ?? null,
+    brandQuote: kol.brandQuote ?? null,
+    finalCooperationPrice: kol.finalCooperationPrice ?? null,
     agreedDeadline: kol.agreedDeadline ?? null,
     notes: kol.notes ?? null,
     replyResolved: kol.replyResolved ?? false,

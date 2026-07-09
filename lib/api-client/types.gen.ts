@@ -646,8 +646,12 @@ export interface components {
              * @description 最近一封去信时间
              */
             lastOutboundAt?: string | null;
-            /** @description 约定价格 */
+            /** @description 约定价格（优先最终合作价格，否则解析品牌报价） */
             agreedPrice?: number | null;
+            /** @description 品牌报价（飞书 品牌报价 栏原文） */
+            brandQuote?: string | null;
+            /** @description 最终合作价格（飞书 最终合作价格 栏） */
+            finalCooperationPrice?: number | null;
             /**
              * Format: date
              * @description 约定截稿日期
@@ -961,8 +965,8 @@ export interface components {
             role: components["schemas"]["UserRole"];
             /** Format: uuid */
             mentorUserId?: string | null;
-            /** @description 飞书运营名（保存后批量归属未分配达人） */
-            feishuOperatorName?: string | null;
+            /** @description 飞书运营名（必填，需与自建联表格运营名一致；保存后批量归属未分配达人） */
+            feishuOperatorName: string;
         };
         TeamProfileUpdateResponse: {
             profile: components["schemas"]["Profile"];

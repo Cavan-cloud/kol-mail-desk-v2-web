@@ -60,6 +60,10 @@ export default function OnboardingPage() {
       setError("实习生必须选择 mentor。");
       return;
     }
+    if (!feishuOperatorName.trim()) {
+      setError("请填写飞书运营名。");
+      return;
+    }
     setSaving(true);
     setError(null);
     try {
@@ -67,7 +71,7 @@ export default function OnboardingPage() {
         displayName: displayName.trim(),
         role,
         mentorUserId: role === "intern" ? mentorUserId : null,
-        feishuOperatorName: feishuOperatorName.trim() || null,
+        feishuOperatorName: feishuOperatorName.trim(),
       });
       queryClient.setQueryData(queryKeys.me, result.profile);
       router.replace("/");
@@ -145,13 +149,15 @@ export default function OnboardingPage() {
           ) : null}
 
           <label className="grid gap-1.5 text-sm">
-            <span className="font-medium">飞书运营名（可选）</span>
+            <span className="font-medium">飞书运营名</span>
             <input
+              required
               value={feishuOperatorName}
               onChange={(event) => setFeishuOperatorName(event.target.value)}
               className="field-glass h-10 px-3"
-              placeholder="与飞书表格中的运营名一致"
+              placeholder="需与自建联表格运营名一致"
             />
+            <span className="text-xs text-muted">需与自建联表格运营名一致</span>
           </label>
 
           {error ? (

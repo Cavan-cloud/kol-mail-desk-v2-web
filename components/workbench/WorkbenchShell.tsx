@@ -196,7 +196,7 @@ export function WorkbenchShell({
                 }`}
               >
                 <div className="overflow-hidden">
-                  <div className="desk-scroll max-h-[60vh] overflow-y-auto border-t border-white/50 px-5 py-4">
+                  <div className="desk-scroll max-h-[40vh] overflow-y-auto border-t border-white/50 px-5 py-4">
                     {composeDock}
                   </div>
                 </div>

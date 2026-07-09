@@ -348,14 +348,14 @@ export function DraftSendPanel({
             title="中文编辑稿"
             value={chineseDraft}
             onChange={setChineseDraft}
-            heightClass={isExpanded ? "min-h-[60vh]" : "min-h-[220px]"}
+            heightClass={isExpanded ? "min-h-[60vh]" : "min-h-[146px]"}
           />
           <label className="grid gap-2">
             <span className="text-sm font-medium">英文发送稿（富文本）</span>
             <RichTextEditor
               value={englishBody}
               onChange={(val) => { setEnglishBody(val); setCheckIssues(null); }}
-              heightClass={isExpanded ? "min-h-[60vh]" : "min-h-[220px]"}
+              heightClass={isExpanded ? "min-h-[60vh]" : "min-h-[146px]"}
               placeholder="可使用工具栏加粗、配色、列表与链接，发送时将作为 HTML 邮件投递。"
             />
           </label>
