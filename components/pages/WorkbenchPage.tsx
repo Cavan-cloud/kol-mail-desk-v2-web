@@ -309,14 +309,20 @@ function WorkbenchPageInner() {
             />
             <Fact
               label="报价"
-              value={selectedKol.brandQuote?.trim() || "待确认"}
+              value={
+                selectedKol.brandQuote?.trim()
+                || (selectedKol.agreedPrice != null ? `$${selectedKol.agreedPrice}` : null)
+                || "待确认"
+              }
             />
-            {selectedKol.finalCooperationPrice != null ? (
-              <Fact
-                label="最终合作价格"
-                value={`$${selectedKol.finalCooperationPrice}`}
-              />
-            ) : null}
+            <Fact
+              label="最终合作价格"
+              value={
+                selectedKol.finalCooperationPrice != null
+                  ? `$${selectedKol.finalCooperationPrice}`
+                  : "待确认"
+              }
+            />
           </dl>
           {selectedKol.externalProfileUrl ? (
             <a
