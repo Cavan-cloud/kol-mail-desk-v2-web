@@ -512,7 +512,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** 中英互译 */
+        /** 文本翻译（中↔英 / 中→韩） */
         post: operations["aiTranslate"];
         delete?: never;
         options?: never;
@@ -1112,17 +1112,17 @@ export interface components {
         AiTranslateRequest: {
             text: string;
             /**
-             * @description 目标语言
+             * @description 目标语言（zh 邮件正文中译；en/ko 中文编辑稿→最终确认稿）
              * @default zh
              * @enum {string}
              */
-            targetLang: "zh" | "en";
+            targetLang: "zh" | "en" | "ko";
         };
         AiTranslateResult: {
             /** @description 译文 */
             translated?: string;
             /** @enum {string} */
-            targetLang?: "zh" | "en";
+            targetLang?: "zh" | "en" | "ko";
             fallback?: boolean;
         };
     };

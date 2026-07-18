@@ -2,7 +2,7 @@
 
 import { ChevronDown, Menu, PanelLeftClose, PanelRightClose, PanelRightOpen, PenLine } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 import { AppBrand, AppSidebar } from "@/components/shell/AppNav";
 
 export type SidebarStat = {
@@ -39,6 +39,19 @@ type Props = {
 const SIDEBAR_KEY = "lmd.sidebar.collapsed";
 const INFO_KEY = "lmd.info.open";
 const COMPOSE_KEY = "lmd.compose.open";
+const COMPOSE_HEIGHT_KEY = "lmd.compose.height";
+const COMPOSE_HEIGHT_MIN = 180;
+const COMPOSE_HEIGHT_MAX_RATIO = 0.75;
+const COMPOSE_HEIGHT_DEFAULT_RATIO = 0.4;
+
+function clampComposeHeight(px: number) {
+  const max = Math.round(window.innerHeight * COMPOSE_HEIGHT_MAX_RATIO);
+  return Math.min(max, Math.max(COMPOSE_HEIGHT_MIN, Math.round(px)));
+}
+
+function defaultComposeHeight() {
+  return Math.round(window.innerHeight * COMPOSE_HEIGHT_DEFAULT_RATIO);
+}
 
 export function WorkbenchShell({
   navBadges,
@@ -56,6 +69,8 @@ export function WorkbenchShell({
   const [collapsed, setCollapsed] = useState(false);
   const [infoOpen, setInfoOpen] = useState(true);
   const [composeOpen, setComposeOpen] = useState(true);
+  const [composeHeight, setComposeHeight] = useState<number | null>(null);
+  const [resizingCompose, setResizingCompose] = useState(false);
 
   useEffect(() => {
     setCollapsed(window.localStorage.getItem(SIDEBAR_KEY) === "1");
@@ -63,7 +78,25 @@ export function WorkbenchShell({
     if (storedInfo !== null) setInfoOpen(storedInfo === "1");
     const storedCompose = window.localStorage.getItem(COMPOSE_KEY);
     if (storedCompose !== null) setComposeOpen(storedCompose === "1");
+    const storedHeight = Number(window.localStorage.getItem(COMPOSE_HEIGHT_KEY));
+    setComposeHeight(
+      Number.isFinite(storedHeight) && storedHeight > 0
+        ? clampComposeHeight(storedHeight)
+        : defaultComposeHeight()
+    );
   }, []);
+
+  useEffect(() => {
+    if (!resizingCompose) return;
+    const prev = document.body.style.cursor;
+    const prevUserSelect = document.body.style.userSelect;
+    document.body.style.cursor = "ns-resize";
+    document.body.style.userSelect = "none";
+    return () => {
+      document.body.style.cursor = prev;
+      document.body.style.userSelect = prevUserSelect;
+    };
+  }, [resizingCompose]);
 
   function toggleSidebar() {
     setCollapsed((value) => {
@@ -87,6 +120,38 @@ export function WorkbenchShell({
       window.localStorage.setItem(COMPOSE_KEY, next ? "1" : "0");
       return next;
     });
+  }
+
+  function onComposeResizePointerDown(event: ReactPointerEvent<HTMLDivElement>) {
+    if (!composeOpen) return;
+    event.preventDefault();
+    event.stopPropagation();
+
+    const startY = event.clientY;
+    const startHeight = composeHeight ?? defaultComposeHeight();
+    const handle = event.currentTarget;
+    handle.setPointerCapture(event.pointerId);
+    setResizingCompose(true);
+
+    function onMove(ev: PointerEvent) {
+      const next = clampComposeHeight(startHeight + (startY - ev.clientY));
+      setComposeHeight(next);
+    }
+
+    function onUp(ev: PointerEvent) {
+      handle.releasePointerCapture(ev.pointerId);
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      setResizingCompose(false);
+      setComposeHeight((current) => {
+        const resolved = current ?? startHeight;
+        window.localStorage.setItem(COMPOSE_HEIGHT_KEY, String(resolved));
+        return resolved;
+      });
+    }
+
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
   }
 
   const statsFooter =
@@ -178,6 +243,22 @@ export function WorkbenchShell({
           <div className="desk-scroll min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-5 py-4">{detailBody}</div>
           {composeDock ? (
             <div className="relative shrink-0 border-t-2 border-[#b8ddd3]/90 bg-gradient-to-b from-[#dff1ec] via-[#edf8f5]/95 to-white/55 shadow-[0_-6px_20px_rgba(46,125,110,0.08)] backdrop-blur">
+              {composeOpen ? (
+                <div
+                  role="separator"
+                  aria-orientation="horizontal"
+                  aria-label="拖动调整撰写区高度"
+                  title="拖动调整高度"
+                  onPointerDown={onComposeResizePointerDown}
+                  className="absolute inset-x-0 top-0 z-10 flex h-3 -translate-y-1/2 cursor-ns-resize touch-none items-center justify-center"
+                >
+                  <span
+                    className={`h-1 w-10 rounded-full transition-colors ${
+                      resizingCompose ? "bg-[#2a7a6d]/70" : "bg-[#2a7a6d]/35 hover:bg-[#2a7a6d]/55"
+                    }`}
+                  />
+                </div>
+              ) : null}
               <button
                 type="button"
                 onClick={toggleCompose}
@@ -191,12 +272,20 @@ export function WorkbenchShell({
                 />
               </button>
               <div
-                className={`grid transition-[grid-template-rows] duration-300 ease-fluid ${
+                className={`grid ${resizingCompose ? "" : "transition-[grid-template-rows] duration-300 ease-fluid"} ${
                   composeOpen ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
                 }`}
               >
                 <div className="overflow-hidden">
-                  <div className="desk-scroll max-h-[40vh] overflow-y-auto border-t border-white/50 px-5 py-4">
+                  <div
+                    className="desk-scroll overflow-y-auto border-t border-white/50 px-5 py-4"
+                    style={{
+                      height: composeOpen
+                        ? `${composeHeight ?? Math.round(900 * COMPOSE_HEIGHT_DEFAULT_RATIO)}px`
+                        : undefined,
+                      maxHeight: composeOpen ? undefined : "0px",
+                    }}
+                  >
                     {composeDock}
                   </div>
                 </div>

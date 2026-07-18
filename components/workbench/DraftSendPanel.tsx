@@ -111,7 +111,7 @@ export function DraftSendPanel({
       return;
     }
     if (isEditorEmpty(englishBody)) {
-      setMessage("英文发送稿不能为空。");
+      setMessage("最终确认稿不能为空。");
       return;
     }
     setLoading(true);
@@ -171,7 +171,7 @@ export function DraftSendPanel({
   async function checkDraftContent() {
     const plainText = htmlToPlainText(englishBody).trim();
     if (plainText.length < 50) {
-      setMessage("请先填写英文发送稿再检查。");
+      setMessage("请先填写最终确认稿再检查。");
       return;
     }
     setChecking(true);
@@ -199,7 +199,7 @@ export function DraftSendPanel({
       return;
     }
     if (isEditorEmpty(englishBody)) {
-      setMessage("英文发送稿不能为空。");
+      setMessage("最终确认稿不能为空。");
       return;
     }
     setScheduling(true);
@@ -236,7 +236,7 @@ export function DraftSendPanel({
     setMessage(`已插入模板「${selectedTemplate.name}」，请人工确认后再发送。`);
   }
 
-  async function translateChineseToEnglish() {
+  async function translateChineseDraft(targetLang: "en" | "ko") {
     if (!chineseDraft.trim()) {
       setMessage("请先填写中文编辑稿。");
       return;
@@ -245,10 +245,11 @@ export function DraftSendPanel({
     setTranslating(true);
     setMessage(null);
     try {
-      const result = await apiClient.ai.translate({ text: chineseDraft, targetLang: "en" });
+      const result = await apiClient.ai.translate({ text: chineseDraft, targetLang });
       if (!result.translated) throw new Error("翻译失败");
       setEnglishBody(plainTextToHtml(result.translated));
-      setMessage("已将中文编辑稿翻译为英文发送稿，请人工确认。");
+      const langLabel = targetLang === "ko" ? "韩文" : "英文";
+      setMessage(`已将中文编辑稿翻译为最终确认稿（${langLabel}），请人工确认。`);
     } catch (error) {
       setMessage(isApiClientError(error) ? error.message : error instanceof Error ? error.message : "翻译失败");
     } finally {
@@ -270,13 +271,29 @@ export function DraftSendPanel({
             </div>
             <p className="m-0 mt-1 text-xs text-muted">
               收件人：{to}
-              {ccEmails.length ? ` · CC ${ccEmails.length}` : ""} · 中文用于编辑，英文用于发送。
+              {ccEmails.length ? ` · CC ${ccEmails.length}` : ""} · 中文用于编辑，最终确认稿用于发送。
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <button type="button" disabled={translating} className="island-button h-9 px-3" onClick={translateChineseToEnglish}>
+            <button
+              type="button"
+              disabled={translating}
+              className="island-button h-9 px-3"
+              onClick={() => translateChineseDraft("en")}
+              title="将中文编辑稿翻译为英文最终确认稿"
+            >
               <Languages className="size-4" />
               {translating ? "翻译中" : "中译英"}
+            </button>
+            <button
+              type="button"
+              disabled={translating}
+              className="island-button h-9 px-3"
+              onClick={() => translateChineseDraft("ko")}
+              title="将中文编辑稿翻译为韩文最终确认稿"
+            >
+              <Languages className="size-4" />
+              {translating ? "翻译中" : "中译韩"}
             </button>
             <button type="button" disabled={drafting} className="island-button h-9 px-3" onClick={generateDraft}>
               <Languages className="size-4" />
@@ -343,20 +360,22 @@ export function DraftSendPanel({
           </label>
         </div>
 
-        <div className={`grid gap-4 ${isExpanded ? "lg:grid-cols-2" : "grid-cols-1"}`}>
+        <div className={`grid gap-4 ${isExpanded ? "lg:grid-cols-2 lg:items-stretch" : "grid-cols-1"}`}>
           <DraftBox
             title="中文编辑稿"
             value={chineseDraft}
             onChange={setChineseDraft}
-            heightClass={isExpanded ? "min-h-[60vh]" : "min-h-[146px]"}
+            heightClass={isExpanded ? "min-h-[52vh] flex-1" : "min-h-[146px]"}
+            className={isExpanded ? "min-h-0 h-full" : undefined}
           />
-          <label className="grid gap-2">
-            <span className="text-sm font-medium">英文发送稿（富文本）</span>
+          <label className={`grid gap-2 ${isExpanded ? "min-h-0 h-full" : ""}`}>
+            <span className="text-sm font-medium">最终确认稿（富文本）</span>
             <RichTextEditor
               value={englishBody}
               onChange={(val) => { setEnglishBody(val); setCheckIssues(null); }}
-              heightClass={isExpanded ? "min-h-[60vh]" : "min-h-[146px]"}
-              placeholder="可使用工具栏加粗、配色、列表与链接，发送时将作为 HTML 邮件投递。"
+              heightClass={isExpanded ? "min-h-[52vh] flex-1" : "min-h-[146px]"}
+              className={isExpanded ? "min-h-0 h-full" : undefined}
+              placeholder="可先点选工具栏格式再输入；发送时将作为 HTML 邮件投递。"
             />
           </label>
         </div>
@@ -409,7 +428,7 @@ export function DraftSendPanel({
           </button>
           <button type="button" disabled={loading || !reviewed} onClick={send} className="primary-island-button h-10">
             {loading ? <Loader2 className="size-4 animate-spin" /> : <CheckCircle2 className="size-4" />}
-            确认发送英文稿
+            确认发送最终稿
           </button>
         </div>
       </div>
@@ -458,15 +477,17 @@ function DraftBox({
   title,
   value,
   onChange,
-  heightClass
+  heightClass,
+  className
 }: {
   title: string;
   value: string;
   onChange: (value: string) => void;
   heightClass: string;
+  className?: string;
 }) {
   return (
-    <label className="grid gap-2">
+    <label className={`grid gap-2 ${className ?? ""}`.trim()}>
       <span className="text-sm font-medium">{title}</span>
       <textarea
         value={value}

@@ -41,7 +41,7 @@ export function buildAiApi(client: ApiClient) {
       const env = await unwrap(client.POST("/api/v1/ai/check", { body }));
       return unwrapResult(env as ResultEnvelope<AiCheckResult>, "check");
     },
-    /** POST /api/v1/ai/translate — 中英互译。 */
+    /** POST /api/v1/ai/translate — 文本翻译（zh / en / ko）。 */
     async translate(body: AiTranslateRequest): Promise<AiTranslateResult> {
       const env = await unwrap(client.POST("/api/v1/ai/translate", { body }));
       return unwrapResult(

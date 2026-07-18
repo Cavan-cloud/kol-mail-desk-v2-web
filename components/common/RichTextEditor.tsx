@@ -14,7 +14,7 @@ import {
   ListOrdered,
   Underline as UnderlineIcon
 } from "lucide-react";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, type MouseEvent as ReactMouseEvent, type ReactNode } from "react";
 
 const PRESET_COLORS = [
   { label: "默认", value: "#182126" },
@@ -28,18 +28,18 @@ type Props = {
   value: string;
   onChange: (html: string) => void;
   heightClass?: string;
+  className?: string;
   placeholder?: string;
 };
 
-export function RichTextEditor({ value, onChange, heightClass, placeholder }: Props) {
+export function RichTextEditor({ value, onChange, heightClass, className, placeholder }: Props) {
   const lastEmittedRef = useRef(value);
 
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
         heading: false,
-        codeBlock: false,
-        // StarterKit ships with Bold/Italic/BulletList/OrderedList/Link-friendly nodes.
+        codeBlock: false
       }),
       Underline,
       TextStyle,
@@ -55,14 +55,15 @@ export function RichTextEditor({ value, onChange, heightClass, placeholder }: Pr
     ],
     editorProps: {
       attributes: {
-        class: `tiptap-editor ${heightClass ?? ""}`.trim(),
+        class: "tiptap-editor",
         "data-placeholder": placeholder ?? ""
       }
     },
-    content: value || "",
+    content: value || "<p></p>",
     immediatelyRender: false,
-    onUpdate({ editor }) {
-      const html = editor.getHTML();
+    shouldRerenderOnTransaction: true,
+    onUpdate({ editor: current }) {
+      const html = current.getHTML();
       lastEmittedRef.current = html;
       onChange(html);
     }
@@ -73,7 +74,7 @@ export function RichTextEditor({ value, onChange, heightClass, placeholder }: Pr
   useEffect(() => {
     if (!editor) return;
     if (value === lastEmittedRef.current) return;
-    const next = value || "";
+    const next = value || "<p></p>";
     if (editor.getHTML() === next) return;
     lastEmittedRef.current = next;
     editor.commands.setContent(next, { emitUpdate: false });
@@ -85,21 +86,23 @@ export function RichTextEditor({ value, onChange, heightClass, placeholder }: Pr
     );
   }
 
+  const activeEditor = editor;
+
   function promptForLink() {
-    const previous = editor!.getAttributes("link").href as string | undefined;
+    const previous = activeEditor.getAttributes("link").href as string | undefined;
     const url = window.prompt("插入链接 URL", previous ?? "https://");
     if (url === null) return;
     if (url === "") {
-      editor!.chain().focus().unsetLink().run();
+      activeEditor.chain().focus().unsetLink().run();
       return;
     }
     const safe = /^(https?:|mailto:|tel:)/i.test(url) ? url : `https://${url}`;
-    editor!.chain().focus().extendMarkRange("link").setLink({ href: safe }).run();
+    activeEditor.chain().focus().extendMarkRange("link").setLink({ href: safe }).run();
   }
 
   return (
-    <div className="rounded-2xl border border-white/70 bg-white/[0.80] shadow-inset">
-      <div className="flex flex-wrap items-center gap-1 border-b border-white/70 px-2 py-1.5">
+    <div className={`flex flex-col overflow-hidden rounded-2xl border border-white/70 bg-white/[0.80] shadow-inset ${className ?? ""}`.trim()}>
+      <div className="flex shrink-0 flex-wrap items-center gap-1 border-b border-white/70 px-2 py-1.5">
         <ToolbarButton
           active={editor.isActive("bold")}
           onClick={() => editor.chain().focus().toggleBold().run()}
@@ -147,6 +150,7 @@ export function RichTextEditor({ value, onChange, heightClass, placeholder }: Pr
               key={color.value}
               type="button"
               title={color.label}
+              onMouseDown={preserveEditorFocus}
               onClick={() =>
                 color.value === "#182126"
                   ? editor.chain().focus().unsetColor().run()
@@ -158,9 +162,21 @@ export function RichTextEditor({ value, onChange, heightClass, placeholder }: Pr
           ))}
         </div>
       </div>
-      <EditorContent editor={editor} />
+      <div
+        className={`tiptap-editor-shell min-h-0 flex-1 cursor-text ${heightClass ?? ""}`}
+        onClick={() => {
+          if (!editor.isFocused) editor.commands.focus("end");
+        }}
+      >
+        <EditorContent editor={editor} />
+      </div>
     </div>
   );
+}
+
+/** Prevent toolbar mousedown from blurring the editor (keeps stored marks / caret). */
+function preserveEditorFocus(event: ReactMouseEvent) {
+  event.preventDefault();
 }
 
 function ToolbarButton({
@@ -172,11 +188,12 @@ function ToolbarButton({
   active: boolean;
   onClick: () => void;
   title: string;
-  children: React.ReactNode;
+  children: ReactNode;
 }) {
   return (
     <button
       type="button"
+      onMouseDown={preserveEditorFocus}
       onClick={onClick}
       title={title}
       className={`inline-flex size-7 items-center justify-center rounded-full text-xs transition ${

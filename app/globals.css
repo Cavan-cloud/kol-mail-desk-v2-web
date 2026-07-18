@@ -125,6 +125,63 @@ button {
   to { opacity: 1; transform: none; }
 }
 
+/* TipTap rich-text editor (DraftSendPanel final draft). */
+.tiptap-editor-shell {
+  min-height: inherit;
+}
+
+.tiptap-editor-shell .tiptap,
+.tiptap-editor-shell .ProseMirror,
+.tiptap-editor {
+  min-height: inherit;
+  outline: none;
+  caret-color: #182126;
+  color: #182126;
+  cursor: text;
+}
+
+.tiptap-editor.ProseMirror,
+.tiptap-editor-shell .ProseMirror {
+  padding: 0.75rem;
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.tiptap-editor.ProseMirror p,
+.tiptap-editor-shell .ProseMirror p {
+  margin: 0 0 0.5em;
+}
+
+.tiptap-editor.ProseMirror p:last-child,
+.tiptap-editor-shell .ProseMirror p:last-child {
+  margin-bottom: 0;
+}
+
+.tiptap-editor.ProseMirror ul,
+.tiptap-editor.ProseMirror ol,
+.tiptap-editor-shell .ProseMirror ul,
+.tiptap-editor-shell .ProseMirror ol {
+  margin: 0.25em 0 0.5em;
+  padding-left: 1.25rem;
+}
+
+.tiptap-editor.ProseMirror a,
+.tiptap-editor-shell .ProseMirror a {
+  color: #0f766e;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.tiptap-editor.ProseMirror[data-placeholder]:has(> p:only-child > br.ProseMirror-trailingBreak:only-child)::before,
+.tiptap-editor.ProseMirror[data-placeholder]:has(> p:only-child:empty)::before {
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+  color: #9ca3af;
+}
+
 .email-html-body a,
 .email-plain-body a {
   color: #0f766e;
